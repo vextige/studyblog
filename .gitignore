@@ -1,0 +1,15 @@
+# 빌드 결과물 (GitHub Actions가 매번 새로 만들어요)
+dist/
+.astro/
+
+# 설치된 라이브러리 (npm install 하면 다시 생겨요)
+node_modules/
+
+# 비밀 값이 들어갈 수 있는 파일은 절대 올리지 않아요
+.env
+.env.*
+
+# 로그, 운영체제가 만드는 파일
+npm-debug.log*
+.DS_Store
+Thumbs.db
