@@ -1,0 +1,54 @@
+# main 브랜치에 push(업로드)하면 GitHub가 사이트를 새로 빌드해서 GitHub Pages에 올려요.
+name: 사이트 배포
+
+on:
+  push:
+    branches: [main]
+  # GitHub 웹사이트 Actions 탭에서 "Run workflow" 버튼으로 직접 실행할 수도 있어요.
+  workflow_dispatch:
+
+# GitHub가 배포할 때마다 자동으로 주는 임시 권한만 써요. (비밀번호·토큰을 따로 넣지 않아요)
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포가 겹치면 진행 중인 배포를 끝까지 마치고 다음 배포를 해요.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 코드 가져오기
+        uses: actions/checkout@v7
+
+      - name: Node.js 준비
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: 라이브러리 설치
+        run: npm ci
+
+      - name: 사이트 빌드
+        run: npm run build
+
+      - name: 빌드 결과물(dist 폴더) 올리기
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: GitHub Pages에 배포
+        id: deployment
+        uses: actions/deploy-pages@v5
