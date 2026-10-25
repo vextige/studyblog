@@ -1,0 +1,24 @@
+---
+// 글 목록에 보이는 카드 하나
+import { formatDate, url, type Post } from '../lib/blog';
+import TagList from './TagList.astro';
+
+interface Props {
+  post: Post;
+}
+
+const { post } = Astro.props;
+const { title, date, day, tags, description } = post.data;
+---
+
+<li class="post-item" data-id={post.id} data-tags={tags.join(' ')}>
+  <a class="post-link" href={url(`posts/${post.id}/`)}>
+    <span class="day-badge">Day {day}</span>
+    <span class="post-title">{title}</span>
+  </a>
+  {description && <p class="post-desc">{description}</p>}
+  <div class="post-meta">
+    <time datetime={date.toISOString()}>{formatDate(date)}</time>
+    <TagList tags={tags} />
+  </div>
+</li>

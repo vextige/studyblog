@@ -1,0 +1,12 @@
+---
+// src/pages 안의 .md 페이지(예: 소개 페이지)에 쓰는 틀
+import BaseLayout from './BaseLayout.astro';
+
+const { frontmatter } = Astro.props;
+---
+
+<BaseLayout title={frontmatter.title} description={frontmatter.description}>
+  <article class="prose">
+    <slot />
+  </article>
+</BaseLayout>
