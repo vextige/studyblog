@@ -1,0 +1,33 @@
+---
+import Icon from './Icon.astro';
+import { Globe, GithubIcon, InstagramIcon, Mail, XBrandIcon, YoutubeIcon, type IconNode } from '../lib/icons';
+import { safeHref, type SiteSettings } from '../lib/settings';
+
+interface Props {
+  social: SiteSettings['social'];
+  class?: string;
+}
+
+const { social, class: className = 'socials' } = Astro.props;
+const items: { href: string | null; label: string; icon: IconNode }[] = [
+  { href: safeHref(social.github), label: 'GitHub', icon: GithubIcon },
+  { href: social.email ? `mailto:${social.email}` : null, label: '이메일', icon: Mail },
+  { href: safeHref(social.x), label: 'X', icon: XBrandIcon },
+  { href: safeHref(social.instagram), label: 'Instagram', icon: InstagramIcon },
+  { href: safeHref(social.youtube), label: 'YouTube', icon: YoutubeIcon },
+  { href: safeHref(social.website), label: '웹사이트', icon: Globe },
+];
+const visible = items.filter((item) => item.href);
+---
+
+{
+  visible.length > 0 && (
+    <div class={className}>
+      {visible.map((item) => (
+        <a href={item.href!} target="_blank" rel="noopener noreferrer me" aria-label={item.label} title={item.label}>
+          <Icon icon={item.icon} />
+        </a>
+      ))}
+    </div>
+  )
+}

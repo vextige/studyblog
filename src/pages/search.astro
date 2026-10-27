@@ -1,0 +1,56 @@
+---
+// 검색 화면 (자바스크립트 없이도 동작하는 검색. 평소엔 Ctrl+K 검색 창을 써요)
+import Icon from '../components/Icon.astro';
+import PostRow from '../components/PostRow.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Search } from '../lib/icons';
+import { searchPosts, type SearchHit } from '../lib/posts';
+import { ipHash, rateLimit } from '../lib/security';
+
+const q = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 80);
+let hits: SearchHit[] = [];
+let limited = false;
+if (q) {
+  const result = await rateLimit('search', await ipHash(Astro.request), 60, 60);
+  if (result.ok) hits = await searchPosts(q, 30);
+  else limited = true;
+}
+---
+
+<BaseLayout title={q ? `"${q}" 검색` : '검색'} noindex={Boolean(q)}>
+  <div class="wrap">
+    <header class="page-head">
+      <span class="label">Search · 기록 찾기</span>
+      <h1>무엇을 찾고 있나요?</h1>
+    </header>
+    <form class="search-page-form" method="get" action="/search" role="search">
+      <label class="sr-only" for="search-q">검색어</label>
+      <input class="input" id="search-q" type="search" name="q" value={q} placeholder="제목, 내용으로 찾기" autofocus />
+      <button class="btn btn-primary" type="submit"><Icon icon={Search} /> 찾기</button>
+    </form>
+
+    <div class="section" style="margin-top: 36px">
+      {
+        limited ? (
+          <p class="notice notice-error">검색을 너무 많이 했어요. 잠시 뒤에 다시 해 주세요.</p>
+        ) : q && hits.length === 0 ? (
+          <div class="empty">
+            <p class="hand">못 찾았어요</p>
+            <p>다른 낱말로 찾아보거나, 띄어쓰기를 바꿔 보세요.</p>
+          </div>
+        ) : (
+          hits.length > 0 && (
+            <>
+              <p class="label" style="margin-bottom: 14px">결과 {hits.length}개</p>
+              <ol class="post-list">
+                {hits.map((hit) => (
+                  <PostRow post={hit} snippet={hit.snippet} />
+                ))}
+              </ol>
+            </>
+          )
+        )
+      }
+    </div>
+  </div>
+</BaseLayout>

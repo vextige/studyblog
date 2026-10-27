@@ -1,0 +1,15 @@
+---
+// 로고: 형광펜 한 줄 + 참 잘했어요 체크 도장 (public/favicon.svg와 같은 그림)
+interface Props {
+  class?: string;
+}
+const { class: className = 'brand-mark' } = Astro.props;
+---
+
+<svg class={className} viewBox="0 0 64 64" aria-hidden="true">
+  <rect width="64" height="64" rx="16" fill="#15151b"></rect>
+  <rect x="8" y="34" width="40" height="13" rx="4" transform="rotate(-9 28 40.5)" fill="#cdf26a"></rect>
+  <circle cx="43" cy="23.5" r="12" fill="none" stroke="#ff5a4f" stroke-width="4.5"></circle>
+  <path d="M37.6 24 l4 4 l7.4-8.2" fill="none" stroke="#ff5a4f" stroke-width="4.5" stroke-linecap="round"
+    stroke-linejoin="round"></path>
+</svg>

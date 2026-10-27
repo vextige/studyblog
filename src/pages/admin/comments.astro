@@ -1,0 +1,132 @@
+---
+// 댓글 관리: 승인 · 스팸 · 삭제 · 답글
+import { actions } from 'astro:actions';
+import Icon from '../../components/Icon.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { formAction, handleFormActions } from '../../lib/admin-forms';
+import { listCommentsForAdmin } from '../../lib/comments';
+import { Check, CornerDownRight, ExternalLink, Trash } from '../../lib/icons';
+import { formatDateTime, relativeTime } from '../../lib/time';
+import type { CommentStatus } from '../../db/schema';
+
+const handled = handleFormActions(Astro, [
+  [actions.admin.moderateComment, '댓글 상태를 바꿨어요.'],
+  [actions.admin.approveAllPending, '이 쪽의 댓글을 모두 승인했어요.'],
+  [actions.admin.deleteComment, '댓글을 지웠어요.'],
+  [actions.admin.spamAuthor, '같은 사람이 쓴 댓글을 모두 스팸으로 옮겼어요.'],
+  [actions.admin.replyComment, '답글을 달았어요.'],
+]);
+if (handled instanceof Response) return handled;
+
+const TABS: { key: CommentStatus; label: string }[] = [
+  { key: 'pending', label: '승인 대기' },
+  { key: 'approved', label: '공개됨' },
+  { key: 'spam', label: '스팸' },
+];
+const raw = Astro.url.searchParams.get('status') as CommentStatus | null;
+const status: CommentStatus = TABS.some((t) => t.key === raw) ? raw! : 'pending';
+const page = Math.max(1, Math.floor(Number(Astro.url.searchParams.get('page')) || 1));
+const { comments, tally } = await listCommentsForAdmin(status, page);
+---
+
+<AdminLayout title="댓글" kicker="Comments" flash={handled}>
+  <nav class="tabs" aria-label="상태별 댓글">
+    {
+      TABS.map((t) => (
+        <a href={`/admin/comments${t.key === 'pending' ? '' : `?status=${t.key}`}`} aria-current={status === t.key ? 'page' : undefined}>
+          {t.label} <small>{tally[t.key]}</small>
+        </a>
+      ))
+    }
+  </nav>
+
+  {
+    status === 'pending' && comments.length > 1 && (
+      <form class="toolbar-row" method="post" action={formAction(Astro.url, actions.admin.approveAllPending)}>
+        {comments.map((c) => (
+          <input type="hidden" name="ids" value={c.id} />
+        ))}
+        <button class="btn btn-sm btn-pen" type="submit"><Icon icon={Check} /> 이 쪽 모두 승인 ({comments.length})</button>
+      </form>
+    )
+  }
+
+  <section class="panel sheet">
+    {
+      comments.length === 0 ? (
+        <p class="muted">{status === 'pending' ? '승인을 기다리는 댓글이 없어요.' : '댓글이 없어요.'}</p>
+      ) : (
+        <ul class="admin-list">
+          {comments.map((c) => (
+            <li class="admin-row">
+              <div class="comment-admin">
+                <div class="admin-row-title">
+                  {c.authorName}
+                  {c.isAdmin && <span class="owner-badge">글쓴이</span>}
+                  {c.parentId && <span class="pill">답글</span>}
+                </div>
+                <p class="comment-body">{c.body}</p>
+                <div class="admin-row-meta">
+                  <a href={`/posts/${encodeURIComponent(c.postSlug)}#comment-${c.id}`} target="_blank" rel="noopener">
+                    <Icon icon={ExternalLink} size={13} /> {c.postTitle}
+                  </a>
+                  <span title={formatDateTime(c.createdAt)}>{relativeTime(c.createdAt)}</span>
+                  {c.ipHash && <span title="IP를 되돌릴 수 없게 바꾼 값">작성자 #{c.ipHash.slice(0, 6)}</span>}
+                </div>
+                {!c.isAdmin && status !== 'spam' && (
+                  <form class="reply-form" method="post" action={formAction(Astro.url, actions.admin.replyComment)}>
+                    <input type="hidden" name="postId" value={c.postId} />
+                    <input type="hidden" name="parentId" value={c.id} />
+                    <label class="sr-only" for={`reply-${c.id}`}>답글</label>
+                    <input class="input" id={`reply-${c.id}`} name="body" required maxlength="2000" placeholder="답글 달기 (달면 이 댓글도 함께 공개돼요)" />
+                    <button class="btn btn-sm" type="submit"><Icon icon={CornerDownRight} /> 답글</button>
+                  </form>
+                )}
+              </div>
+              <div class="row-actions">
+                {status !== 'approved' && (
+                  <form method="post" action={formAction(Astro.url, actions.admin.moderateComment)}>
+                    <input type="hidden" name="id" value={c.id} />
+                    <input type="hidden" name="status" value="approved" />
+                    <button class="btn btn-sm btn-pen" type="submit"><Icon icon={Check} /> 승인</button>
+                  </form>
+                )}
+                {status !== 'spam' && !c.isAdmin && (
+                  <form method="post" action={formAction(Astro.url, actions.admin.moderateComment)}>
+                    <input type="hidden" name="id" value={c.id} />
+                    <input type="hidden" name="status" value="spam" />
+                    <button class="btn btn-sm" type="submit">스팸</button>
+                  </form>
+                )}
+                {status !== 'spam' && c.ipHash && (
+                  <form method="post" action={formAction(Astro.url, actions.admin.spamAuthor)}>
+                    <input type="hidden" name="ipHash" value={c.ipHash} />
+                    <button class="btn btn-sm" type="submit" data-confirm="같은 사람이 쓴 댓글을 모두 스팸으로 옮길까요?">이 사람 모두 스팸</button>
+                  </form>
+                )}
+                <form method="post" action={formAction(Astro.url, actions.admin.deleteComment)}>
+                  <input type="hidden" name="id" value={c.id} />
+                  <button class="btn btn-sm btn-danger" type="submit" data-confirm="이 댓글을 지울까요? 답글도 함께 지워져요.">
+                    <Icon icon={Trash} /> 삭제
+                  </button>
+                </form>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+</AdminLayout>
+
+<style>
+  .owner-badge {
+    display: inline-flex;
+    padding: 2px 8px;
+    border: 1.5px solid var(--stamp);
+    border-radius: 999px;
+    color: var(--stamp);
+    font-size: 11px;
+    font-weight: 750;
+  }
+</style>

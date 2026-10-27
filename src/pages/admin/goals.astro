@@ -1,0 +1,29 @@
+---
+// 목표·계획 관리
+import GoalManager, { type GoalRow } from '../../components/admin/GoalManager';
+import Icon from '../../components/Icon.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { listGoals } from '../../lib/goals';
+import { ExternalLink } from '../../lib/icons';
+
+const goals: GoalRow[] = (await listGoals()).map((g) => ({
+  id: g.id,
+  title: g.title,
+  note: g.note,
+  term: g.term,
+  status: g.status,
+  color: g.color,
+  dueDate: g.dueDate,
+  steps: g.steps,
+  progress: g.progress,
+  percent: g.percent,
+}));
+---
+
+<AdminLayout title="목표·계획" kicker="Goals">
+  <a slot="actions" class="btn btn-ghost" href="/goals" target="_blank" rel="noopener"><Icon icon={ExternalLink} /> 목표 보드 보기</a>
+  <p class="muted small" style="margin-bottom: 16px">
+    장기 목표를 이번 달 → 이번 주 목표로 잘게 쪼개 보세요. 목표 보드에서 단계를 바로 체크할 수도 있어요.
+  </p>
+  <GoalManager client:only="preact" goals={goals} />
+</AdminLayout>

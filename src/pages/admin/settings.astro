@@ -1,0 +1,18 @@
+---
+// 블로그 설정
+import SettingsForm from '../../components/admin/SettingsForm';
+import Icon from '../../components/Icon.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { Download } from '../../lib/icons';
+import { getSettings } from '../../lib/settings';
+
+const settings = await getSettings();
+const avatarUrl = settings.avatarMediaId ? `/media/${settings.avatarMediaId}` : null;
+---
+
+<AdminLayout title="블로그 설정" kicker="Settings">
+  <a slot="actions" class="btn btn-ghost" href="/api/admin/export" data-astro-prefetch="false" download>
+    <Icon icon={Download} /> 모든 글 백업 받기
+  </a>
+  <SettingsForm client:only="preact" initial={settings} avatarUrl={avatarUrl} />
+</AdminLayout>

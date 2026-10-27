@@ -1,0 +1,31 @@
+---
+import SocialLinks from './SocialLinks.astro';
+import type { SiteSettings } from '../lib/settings';
+
+interface Props {
+  settings: SiteSettings;
+}
+
+const { settings } = Astro.props;
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <div>
+      {settings.footerNote && <p class="footer-note">{settings.footerNote}</p>}
+      <p class="footer-copy">© {year} {settings.siteTitle} · {settings.authorName}</p>
+    </div>
+    <div>
+      <nav class="footer-links" aria-label="바닥글 메뉴">
+        <a href="/posts">모든 기록</a>
+        <a href="/goals">목표와 계획</a>
+        <a href="/tools">공부 타이머</a>
+        <a href="/tags">태그</a>
+        <a href="/rss.xml" data-astro-prefetch="false">RSS 구독</a>
+        <a href="/admin" data-astro-prefetch="false">{Astro.locals.user ? '관리자 화면' : '글쓴이 로그인'}</a>
+      </nav>
+      <SocialLinks social={settings.social} />
+    </div>
+  </div>
+</footer>

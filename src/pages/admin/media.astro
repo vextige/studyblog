@@ -1,0 +1,124 @@
+---
+// 이미지 관리: 올리기 · 설명(대체 텍스트) 고치기 · 지우기
+import { actions } from 'astro:actions';
+import Icon from '../../components/Icon.astro';
+import Pagination from '../../components/Pagination.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { formAction, handleFormActions } from '../../lib/admin-forms';
+import { Copy, ImagePlus, Save, Trash } from '../../lib/icons';
+import { listMedia } from '../../lib/media';
+
+const handled = handleFormActions(Astro, [
+  [actions.admin.updateMediaAlt, '이미지 설명을 고쳤어요.'],
+  [actions.admin.deleteMedia, '이미지를 지웠어요.'],
+]);
+if (handled instanceof Response) return handled;
+
+const page = Math.max(1, Math.floor(Number(Astro.url.searchParams.get('page')) || 1));
+const media = await listMedia(page, 24);
+const mb = (media.totalBytes / 1024 / 1024).toFixed(1);
+const conflict = handled?.tone === 'error' && handled.message.includes('강제 삭제');
+---
+
+<AdminLayout title="이미지" kicker={`Media · ${media.total}개 · ${mb}MB`} flash={handled}>
+  <label class="dropzone" data-media-drop>
+    <Icon icon={ImagePlus} />
+    <b>여기에 이미지를 끌어다 놓거나 눌러서 고르세요</b>
+    <span class="small muted">PNG · JPG · WebP · GIF · AVIF, 큰 사진은 자동으로 줄여요 (최대 1.9MB)</span>
+    <input type="file" accept="image/*" multiple hidden data-media-input />
+  </label>
+
+  <section class="section-gap">
+    {
+      media.items.length === 0 ? (
+        <p class="muted">아직 올린 이미지가 없어요.</p>
+      ) : (
+        <div class="media-grid">
+          {media.items.map((m) => (
+            <figure class="media-item sheet">
+              <a href={m.url} target="_blank" rel="noopener">
+                <img src={m.url} alt={m.alt} loading="lazy" width={m.width ?? undefined} height={m.height ?? undefined} />
+              </a>
+              <figcaption class="mono small muted">
+                {m.width && m.height ? `${m.width}×${m.height} · ` : ''}
+                {Math.round(m.size / 1024)}KB
+              </figcaption>
+              <form class="reply-form" method="post" action={formAction(Astro.url, actions.admin.updateMediaAlt)}>
+                <input type="hidden" name="id" value={m.id} />
+                <label class="sr-only" for={`alt-${m.id}`}>이미지 설명</label>
+                <input class="input" id={`alt-${m.id}`} name="alt" maxlength="200" value={m.alt} placeholder="이미지 설명 (화면 읽기용)" />
+                <button class="icon-btn" type="submit" aria-label="설명 저장"><Icon icon={Save} /></button>
+              </form>
+              <div class="row-actions">
+                <button class="btn btn-sm btn-ghost" type="button" data-copy={`![${m.alt}](${m.url})`}><Icon icon={Copy} /> 마크다운 복사</button>
+                <form method="post" action={formAction(Astro.url, actions.admin.deleteMedia)}>
+                  <input type="hidden" name="id" value={m.id} />
+                  {conflict && <input type="hidden" name="force" value="true" />}
+                  <button class="btn btn-sm btn-danger" type="submit" data-confirm="이 이미지를 지울까요? 이 이미지를 쓰는 글에서는 사진이 안 보이게 돼요.">
+                    <Icon icon={Trash} /> {conflict ? '강제 삭제' : '삭제'}
+                  </button>
+                </form>
+              </div>
+            </figure>
+          ))}
+        </div>
+      )
+    }
+  </section>
+  <Pagination page={page} pages={media.pages} url={Astro.url} />
+
+  <script>
+    import { uploadImage } from '../../lib/editor-client';
+    import { toast } from '../../scripts/toast';
+
+    const drop = document.querySelector<HTMLElement>('[data-media-drop]');
+    const input = document.querySelector<HTMLInputElement>('[data-media-input]');
+
+    async function upload(files: File[]) {
+      const images = files.filter((f) => f.type.startsWith('image/'));
+      if (images.length === 0) return;
+      let ok = 0;
+      for (const file of images) {
+        try {
+          await uploadImage(file, file.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 60));
+          ok++;
+        } catch (error) {
+          toast(error instanceof Error ? error.message : '올리지 못했어요.', 'error');
+        }
+      }
+      if (ok > 0) {
+        toast(`${ok}개 올렸어요`);
+        setTimeout(() => location.assign('/admin/media'), 500);
+      }
+    }
+
+    input?.addEventListener('change', () => void upload([...(input.files ?? [])]));
+    drop?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      drop.classList.add('is-over');
+    });
+    drop?.addEventListener('dragleave', () => drop.classList.remove('is-over'));
+    drop?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      drop.classList.remove('is-over');
+      void upload([...(e.dataTransfer?.files ?? [])]);
+    });
+
+    document.addEventListener('click', async (e) => {
+      const button = (e.target as Element).closest<HTMLButtonElement>('[data-copy]');
+      if (!button) return;
+      try {
+        await navigator.clipboard.writeText(button.dataset.copy ?? '');
+        toast('복사했어요. 글에 붙여 넣으세요.');
+      } catch {
+        toast('복사하지 못했어요.', 'error');
+      }
+    });
+  </script>
+</AdminLayout>
+
+<style>
+  .section-gap {
+    margin-top: 22px;
+  }
+</style>

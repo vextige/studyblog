@@ -1,0 +1,138 @@
+---
+// 태그 관리: 만들기 · 이름/색/설명 고치기 · 지우기
+import { actions } from 'astro:actions';
+import Icon from '../../components/Icon.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { formAction, handleFormActions } from '../../lib/admin-forms';
+import { Plus, Save, Trash } from '../../lib/icons';
+import { listTags } from '../../lib/tags';
+import { TAG_COLORS } from '../../db/schema';
+
+const handled = handleFormActions(Astro, [
+  [actions.admin.createTag, '태그를 만들었어요.'],
+  [actions.admin.updateTag, '태그를 고쳤어요.'],
+  [actions.admin.deleteTag, '태그를 지웠어요. (글은 그대로 남아요)'],
+]);
+if (handled instanceof Response) return handled;
+
+const tags = await listTags({ publicOnly: false });
+const COLOR_NAMES: Record<string, string> = {
+  lime: '라임',
+  yellow: '노랑',
+  pink: '분홍',
+  sky: '하늘',
+  orange: '주황',
+  violet: '보라',
+  mint: '민트',
+};
+---
+
+<AdminLayout title="태그" kicker="Tags" flash={handled}>
+  <div class="panel-grid">
+    <section class="panel sheet">
+      <div class="panel-head">
+        <h2>새 태그</h2>
+        <p>글쓰기 화면에서 이름만 적어도 자동으로 만들어져요.</p>
+      </div>
+      <form class="form-grid" method="post" action={formAction(Astro.url, actions.admin.createTag)}>
+        <label class="field">
+          <span>이름</span>
+          <input class="input" name="name" required maxlength="30" placeholder="예) 알고리즘" />
+        </label>
+        <label class="field">
+          <span>설명 (선택)</span>
+          <input class="input" name="description" maxlength="200" placeholder="태그 모음 화면에 보여요" />
+        </label>
+        <div class="field">
+          <span>형광펜 색</span>
+          <div class="color-picks">
+            {
+              TAG_COLORS.map((c, i) => (
+                <label data-color={c} title={COLOR_NAMES[c]}>
+                  <input type="radio" name="color" value={c} checked={i === tags.length % TAG_COLORS.length} />
+                  <span />
+                  <b class="sr-only">{COLOR_NAMES[c]}</b>
+                </label>
+              ))
+            }
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit"><Icon icon={Plus} /> 만들기</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel sheet">
+      <div class="panel-head">
+        <h2>모든 태그 <span class="mono small muted">{tags.length}</span></h2>
+      </div>
+      {
+        tags.length === 0 ? (
+          <p class="muted small">아직 태그가 없어요.</p>
+        ) : (
+          <ul class="admin-list">
+            {tags.map((tag) => (
+              <li class="admin-row">
+                <details class="details-box">
+                  <summary>
+                    <span class="tag" data-color={tag.color}>{tag.name}</span>
+                    <span class="mono small muted"> · 글 {tag.count}개 · /tags/{tag.slug}</span>
+                  </summary>
+                  <div>
+                    <form class="form-grid" method="post" action={formAction(Astro.url, actions.admin.updateTag)}>
+                      <input type="hidden" name="id" value={tag.id} />
+                      <div class="form-grid cols-2">
+                        <label class="field">
+                          <span>이름</span>
+                          <input class="input" name="name" required maxlength="30" value={tag.name} />
+                        </label>
+                        <label class="field">
+                          <span>주소</span>
+                          <input class="input" name="slug" maxlength="80" value={tag.slug} />
+                        </label>
+                      </div>
+                      <label class="field">
+                        <span>설명</span>
+                        <input class="input" name="description" maxlength="200" value={tag.description} />
+                      </label>
+                      <div class="color-picks">
+                        {TAG_COLORS.map((c) => (
+                          <label data-color={c} title={COLOR_NAMES[c]}>
+                            <input type="radio" name="color" value={c} checked={tag.color === c} />
+                            <span />
+                            <b class="sr-only">{COLOR_NAMES[c]}</b>
+                          </label>
+                        ))}
+                      </div>
+                      <div class="form-actions">
+                        <button class="btn btn-sm btn-primary" type="submit"><Icon icon={Save} /> 저장</button>
+                      </div>
+                    </form>
+                    <form method="post" action={formAction(Astro.url, actions.admin.deleteTag)} style="margin-top: 10px">
+                      <input type="hidden" name="id" value={tag.id} />
+                      <button class="btn btn-sm btn-danger" type="submit" data-confirm={`"${tag.name}" 태그를 지울까요? 글에서만 떨어지고 글은 남아요.`}>
+                        <Icon icon={Trash} /> 태그 지우기
+                      </button>
+                    </form>
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </section>
+  </div>
+</AdminLayout>
+
+<style>
+  .admin-row {
+    grid-template-columns: minmax(0, 1fr);
+    border: 0;
+    padding: 4px 0;
+  }
+  .admin-row:first-child {
+    border: 0;
+  }
+</style>

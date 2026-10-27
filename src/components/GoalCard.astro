@@ -1,0 +1,62 @@
+---
+// 목표 카드 한 장: 상태 · D-day · 형광펜 진행 막대 · 단계 체크리스트 (달성하면 도장)
+import '../styles/goals.css';
+import { dDayLabel, GOAL_STATUS_LABELS, type GoalView } from '../lib/goals';
+
+interface Props {
+  goal: GoalView;
+  /** 관리자면 단계를 눌러서 바로 체크할 수 있어요. */
+  editable?: boolean;
+  compact?: boolean;
+}
+
+const { goal, editable = false, compact = false } = Astro.props;
+const soon = goal.daysLeft !== null && goal.daysLeft <= 3 && goal.status === 'active';
+---
+
+<article class:list={['goal-card', 'sheet', { 'is-compact': compact }]} data-color={goal.color} data-status={goal.status} data-goal-id={goal.id}>
+  {!compact && <span class="tape" aria-hidden="true" />}
+  <div class="goal-top">
+    <span class="goal-status" data-goal-status>{GOAL_STATUS_LABELS[goal.status]}</span>
+    {goal.daysLeft !== null && goal.status !== 'done' && <span class:list={['dday', { 'is-soon': soon }]}>{dDayLabel(goal.daysLeft)}</span>}
+  </div>
+  <h3>{goal.title}</h3>
+  {goal.note && !compact && <p class="goal-note">{goal.note}</p>}
+  <div class="goal-meter" style={`--p: ${goal.percent}%`}>
+    <span class="track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={goal.percent} aria-label="진행률">
+      <span class="fill"></span>
+    </span>
+    <span class="pct" data-goal-pct>{goal.percent}%</span>
+  </div>
+  {
+    goal.steps.length > 0 && !compact && (
+      <ul class="goal-steps">
+        {goal.steps.map((step, index) => (
+          <li class:list={{ 'is-done': step.done }}>
+            {editable ? (
+              <button class="goal-step" type="button" data-goal-step={index} aria-pressed={step.done ? 'true' : 'false'}>
+                <span class="box" aria-hidden="true" />
+                <span class="text">{step.text}</span>
+              </button>
+            ) : (
+              <>
+                <span class="box" aria-hidden="true" />
+                <span class="text">
+                  {step.text}
+                  {step.done && <span class="sr-only"> (완료)</span>}
+                </span>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+  {
+    goal.status === 'done' && (
+      <svg class="goal-stamp" viewBox="0 0 100 100" aria-hidden="true">
+        <use href="#stamp-mini" />
+      </svg>
+    )
+  }
+</article>

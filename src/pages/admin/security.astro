@@ -1,0 +1,178 @@
+---
+// 로그인·보안: 패스키 관리, 로그인된 기기, 보안 기록
+import { actions } from 'astro:actions';
+import { desc } from 'drizzle-orm';
+import Icon from '../../components/Icon.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { formAction, handleFormActions } from '../../lib/admin-forms';
+import { describeUserAgent, listSessions } from '../../lib/auth/session';
+import { listPasskeys } from '../../lib/auth/webauthn';
+import { KeyRound, LogOut, MonitorSmartphone, Save, Trash } from '../../lib/icons';
+import { formatDateTime, relativeTime } from '../../lib/time';
+import { getDb, schema } from '../../db/client';
+
+const handled = handleFormActions(Astro, [
+  [actions.admin.renamePasskey, '패스키 이름을 바꿨어요.'],
+  [actions.admin.deletePasskey, '패스키를 지웠어요.'],
+  [actions.admin.revokeSession, '그 기기를 로그아웃시켰어요.'],
+  [actions.admin.revokeOtherSessions, '다른 기기를 모두 로그아웃시켰어요.'],
+]);
+if (handled instanceof Response) return handled;
+
+const user = Astro.locals.user!;
+const [passkeys, sessions, logs] = await Promise.all([
+  listPasskeys(user.id),
+  listSessions(user.id),
+  getDb().select().from(schema.auditLogs).orderBy(desc(schema.auditLogs.createdAt)).limit(40).all(),
+]);
+const currentId = Astro.locals.session?.id;
+
+const ACTION_LABELS: Record<string, string> = {
+  'login.success': '로그인',
+  'login.failed': '로그인 실패',
+  logout: '로그아웃',
+  'setup.denied': '설정 토큰 틀림',
+  'passkey.added': '패스키 추가',
+  'passkey.renamed': '패스키 이름 변경',
+  'passkey.removed': '패스키 삭제',
+  'session.revoked': '기기 로그아웃',
+  'session.revoked_others': '다른 기기 모두 로그아웃',
+  'settings.updated': '설정 변경',
+  'post.published': '글 발행',
+  'post.trashed': '글 휴지통',
+  'post.deleted': '글 영구 삭제',
+  'post.trash_emptied': '휴지통 비우기',
+  'page.deleted': '페이지 삭제',
+  'media.deleted': '이미지 삭제',
+  'comments.author_spam': '작성자 스팸 처리',
+  'export.downloaded': '백업 내려받기',
+};
+---
+
+<AdminLayout title="로그인·보안" kicker="Security" flash={handled}>
+  <div class="panel-grid">
+    <section class="panel sheet">
+      <div class="panel-head">
+        <h2>내 패스키</h2>
+        <p>휴대폰과 컴퓨터에 하나씩 등록해 두면 하나를 잃어버려도 안전해요.</p>
+      </div>
+      <ul class="admin-list">
+        {
+          passkeys.map((p) => (
+            <li class="admin-row">
+              <div>
+                <form class="reply-form" method="post" action={formAction(Astro.url, actions.admin.renamePasskey)}>
+                  <input type="hidden" name="id" value={p.id} />
+                  <label class="sr-only" for={`pk-${p.id.slice(0, 8)}`}>패스키 이름</label>
+                  <input class="input" id={`pk-${p.id.slice(0, 8)}`} name="name" maxlength="40" required value={p.name} />
+                  <button class="icon-btn" type="submit" aria-label="이름 저장"><Icon icon={Save} /></button>
+                </form>
+                <div class="admin-row-meta">
+                  <span>{p.backedUp ? '동기화되는 패스키' : '이 기기에만 있는 패스키'}</span>
+                  <span>등록 {formatDateTime(p.createdAt)}</span>
+                  <span>{p.lastUsedAt ? `마지막 사용 ${relativeTime(p.lastUsedAt)}` : '아직 안 씀'}</span>
+                </div>
+              </div>
+              <div class="row-actions">
+                <form method="post" action={formAction(Astro.url, actions.admin.deletePasskey)}>
+                  <input type="hidden" name="id" value={p.id} />
+                  <button class="btn btn-sm btn-danger" type="submit" disabled={passkeys.length <= 1} data-confirm="이 패스키를 지울까요? 이 패스키로는 더 이상 로그인할 수 없어요.">
+                    <Icon icon={Trash} /> 지우기
+                  </button>
+                </form>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+      <form class="form-grid" data-setup data-done="/admin/security" style="margin-top: 16px">
+        <label class="field">
+          <span>새 패스키 이름</span>
+          <input class="input" name="name" maxlength="40" placeholder="예) 내 휴대폰" />
+        </label>
+        <div class="form-actions">
+          <button class="btn btn-pen" type="submit"><Icon icon={KeyRound} /> 이 기기에 패스키 추가</button>
+        </div>
+      </form>
+      <p class="notice" data-auth-status role="status" hidden></p>
+    </section>
+
+    <section class="panel sheet">
+      <div class="panel-head">
+        <h2>로그인된 기기</h2>
+        {
+          sessions.length > 1 && (
+            <form method="post" action={formAction(Astro.url, actions.admin.revokeOtherSessions)}>
+              <button class="btn btn-sm btn-danger" type="submit" data-confirm="지금 이 기기만 남기고 모두 로그아웃시킬까요?">
+                <Icon icon={LogOut} /> 다른 기기 모두 로그아웃
+              </button>
+            </form>
+          )
+        }
+      </div>
+      <ul class="admin-list">
+        {
+          sessions.map((s) => (
+            <li class="admin-row">
+              <div>
+                <div class="admin-row-title">
+                  <Icon icon={MonitorSmartphone} size={17} /> {describeUserAgent(s.userAgent)}
+                  {s.id === currentId && <span class="pill" data-tone="published">지금 이 기기</span>}
+                </div>
+                <div class="admin-row-meta">
+                  <span>로그인 {formatDateTime(s.createdAt)}</span>
+                  <span>마지막 활동 {relativeTime(s.lastSeenAt)}</span>
+                  {s.country && <span>{s.country}</span>}
+                </div>
+              </div>
+              {s.id !== currentId && (
+                <div class="row-actions">
+                  <form method="post" action={formAction(Astro.url, actions.admin.revokeSession)}>
+                    <input type="hidden" name="id" value={s.id} />
+                    <button class="btn btn-sm" type="submit">로그아웃</button>
+                  </form>
+                </div>
+              )}
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+  </div>
+
+  <section class="panel sheet" style="margin-top: 18px">
+    <div class="panel-head">
+      <h2>보안 기록</h2>
+      <p>로그인, 설정 변경 같은 중요한 일을 최근 40개까지 보여 줘요. IP는 되돌릴 수 없게 바꿔서 저장해요.</p>
+    </div>
+    {
+      logs.length === 0 ? (
+        <p class="muted small">아직 기록이 없어요.</p>
+      ) : (
+        <ul class="admin-list">
+          {logs.map((log) => (
+            <li class="admin-row">
+              <div>
+                <div class="admin-row-title">
+                  <span class="pill" data-tone={log.action.includes('failed') || log.action.includes('denied') ? 'danger' : undefined}>
+                    {ACTION_LABELS[log.action] ?? log.action}
+                  </span>
+                  <span class="small muted">{log.detail}</span>
+                </div>
+                <div class="admin-row-meta">
+                  <span>{formatDateTime(log.createdAt)}</span>
+                  {log.country && <span>{log.country}</span>}
+                  {log.ipHash && <span>#{log.ipHash.slice(0, 6)}</span>}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+
+  <script>
+    import '../../scripts/auth';
+  </script>
+</AdminLayout>

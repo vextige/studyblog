@@ -1,0 +1,142 @@
+---
+// 기록 관리: 상태별로 보기, 찾기, 휴지통으로 보내기 · 되살리기 · 영구 삭제
+import { actions } from 'astro:actions';
+import Icon from '../../../components/Icon.astro';
+import Pagination from '../../../components/Pagination.astro';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { formAction, handleFormActions } from '../../../lib/admin-forms';
+import { compactNumber, dayLabel } from '../../../lib/format';
+import { ExternalLink, Pencil, PenLine, RotateCcw, Search, Trash } from '../../../lib/icons';
+import { listAdminPosts, statusLabel, type AdminPostFilter } from '../../../lib/posts';
+import { relativeTime } from '../../../lib/time';
+
+const handled = handleFormActions(Astro, [
+  [actions.admin.setPostStatus, '글 상태를 바꿨어요.'],
+  [actions.admin.deletePost, '글을 완전히 지웠어요.'],
+  [actions.admin.emptyTrash, '휴지통을 비웠어요.'],
+]);
+if (handled instanceof Response) return handled;
+
+const FILTERS: { key: AdminPostFilter; label: string }[] = [
+  { key: 'all', label: '전체' },
+  { key: 'published', label: '발행됨' },
+  { key: 'scheduled', label: '예약됨' },
+  { key: 'draft', label: '임시저장' },
+  { key: 'trashed', label: '휴지통' },
+];
+const rawFilter = Astro.url.searchParams.get('filter') as AdminPostFilter | null;
+const filter: AdminPostFilter = FILTERS.some((f) => f.key === rawFilter) ? rawFilter! : 'all';
+const q = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 80);
+const page = Math.max(1, Math.floor(Number(Astro.url.searchParams.get('page')) || 1));
+const list = await listAdminPosts({ filter, q, page });
+
+function tabHref(key: AdminPostFilter) {
+  const params = new URLSearchParams();
+  if (key !== 'all') params.set('filter', key);
+  if (q) params.set('q', q);
+  const s = params.toString();
+  return `/admin/posts${s ? `?${s}` : ''}`;
+}
+---
+
+<AdminLayout title="기록" kicker="Posts" flash={handled}>
+  <a slot="actions" class="btn btn-primary" href="/admin/posts/new"><Icon icon={PenLine} /> 새 기록</a>
+
+  <nav class="tabs" aria-label="상태별로 보기">
+    {
+      FILTERS.map((f) => (
+        <a href={tabHref(f.key)} aria-current={filter === f.key ? 'page' : undefined}>
+          {f.label} <small>{list.tally[f.key]}</small>
+        </a>
+      ))
+    }
+  </nav>
+
+  <div class="toolbar-row">
+    <form class="inline-search" method="get" role="search">
+      {filter !== 'all' && <input type="hidden" name="filter" value={filter} />}
+      <label class="sr-only" for="post-q">제목 또는 주소로 찾기</label>
+      <input class="input" id="post-q" type="search" name="q" value={q} placeholder="제목 또는 주소로 찾기" />
+      <button class="btn btn-sm" type="submit"><Icon icon={Search} /> 찾기</button>
+    </form>
+    {
+      filter === 'trashed' && list.tally.trashed > 0 && (
+        <form method="post" action={formAction(Astro.url, actions.admin.emptyTrash)} data-confirm="휴지통의 글을 모두 영구 삭제할까요? 되돌릴 수 없어요.">
+          <button class="btn btn-sm btn-danger" type="submit"><Icon icon={Trash} /> 휴지통 비우기</button>
+        </form>
+      )
+    }
+  </div>
+
+  <section class="panel sheet">
+    {
+      list.posts.length > 0 ? (
+        <ul class="admin-list">
+          {list.posts.map((p) => {
+            const s = statusLabel(p.status, p.publishedAt);
+            const isPublic = s.tone === 'published';
+            return (
+              <li class="admin-row">
+                <div>
+                  <div class="admin-row-title">
+                    <span class="pill" data-tone={s.tone}>{s.label}</span>
+                    {p.status === 'trashed' ? <span>{p.title}</span> : <a href={`/admin/posts/${p.id}`}>{p.title}</a>}
+                  </div>
+                  <div class="admin-row-meta">
+                    {p.dayNumber && <span>DAY {dayLabel(p.dayNumber)}</span>}
+                    <span>{relativeTime(p.updatedAt)} 수정</span>
+                    <span>조회 {compactNumber(p.viewCount)}</span>
+                    <span>댓글 {p.commentCount}</span>
+                    {p.tags.length > 0 && (
+                      <span class="tags">
+                        {p.tags.map((t) => (
+                          <span class="tag" data-color={t.color}>{t.name}</span>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div class="row-actions">
+                  {p.status === 'trashed' ? (
+                    <>
+                      <form method="post" action={formAction(Astro.url, actions.admin.setPostStatus)}>
+                        <input type="hidden" name="id" value={p.id} />
+                        <input type="hidden" name="status" value="draft" />
+                        <button class="btn btn-sm" type="submit"><Icon icon={RotateCcw} /> 되살리기</button>
+                      </form>
+                      <form method="post" action={formAction(Astro.url, actions.admin.deletePost)}>
+                        <input type="hidden" name="id" value={p.id} />
+                        <button class="btn btn-sm btn-danger" type="submit" data-confirm={`"${p.title}" 글을 영구 삭제할까요? 되돌릴 수 없어요.`}>
+                          <Icon icon={Trash} /> 영구 삭제
+                        </button>
+                      </form>
+                    </>
+                  ) : (
+                    <>
+                      {isPublic && (
+                        <a class="btn btn-sm btn-ghost" href={`/posts/${encodeURIComponent(p.slug)}`} target="_blank" rel="noopener">
+                          <Icon icon={ExternalLink} /> 보기
+                        </a>
+                      )}
+                      <a class="btn btn-sm" href={`/admin/posts/${p.id}`}><Icon icon={Pencil} /> 고치기</a>
+                      <form method="post" action={formAction(Astro.url, actions.admin.setPostStatus)}>
+                        <input type="hidden" name="id" value={p.id} />
+                        <input type="hidden" name="status" value="trashed" />
+                        <button class="btn btn-sm btn-danger" type="submit" data-confirm={`"${p.title}" 글을 휴지통으로 옮길까요? 휴지통에서 되살릴 수 있어요.`}>
+                          <Icon icon={Trash} /> 휴지통
+                        </button>
+                      </form>
+                    </>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p class="muted">{q ? `"${q}"에 맞는 글이 없어요.` : filter === 'trashed' ? '휴지통이 비어 있어요.' : '아직 글이 없어요.'}</p>
+      )
+    }
+  </section>
+  <Pagination page={list.page} pages={list.pages} url={Astro.url} />
+</AdminLayout>

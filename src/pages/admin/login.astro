@@ -1,0 +1,55 @@
+---
+// 글쓴이 로그인 (패스키)
+import BigStamp from '../../components/BigStamp.astro';
+import Icon from '../../components/Icon.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { countPasskeys } from '../../lib/auth/webauthn';
+import { ArrowLeft, KeyRound } from '../../lib/icons';
+
+if (Astro.locals.user) return Astro.redirect('/admin', 303);
+const hasPasskey = (await countPasskeys()) > 0;
+---
+
+<AdminLayout title="로그인" bare>
+  <section class="auth-card sheet">
+    <span class="tape" aria-hidden="true"></span>
+    <span class="label">Writer only · 글쓴이 전용</span>
+    <h1>다시 왔네요!<br />오늘도 한 칸 채워 볼까요?</h1>
+    {
+      hasPasskey ? (
+        <>
+          <p>비밀번호 없이, 등록해 둔 패스키(지문·얼굴·Windows Hello·휴대폰)로 로그인해요.</p>
+          <button class="btn btn-primary" type="button" data-login>
+            <Icon icon={KeyRound} /> 패스키로 로그인
+          </button>
+        </>
+      ) : (
+        <>
+          <p>아직 등록된 패스키가 없어요. 처음 한 번만 설정 토큰으로 패스키를 등록하면 돼요.</p>
+          <a class="btn btn-primary" href="/admin/setup">
+            <Icon icon={KeyRound} /> 처음 설정하기
+          </a>
+        </>
+      )
+    }
+    <p class="notice" data-auth-status role="status" hidden></p>
+    <a class="more-link" href="/"><Icon icon={ArrowLeft} /> 블로그로 돌아가기</a>
+    <BigStamp id="login-stamp" class="auth-stamp" />
+  </section>
+  <script>
+    import '../../scripts/auth';
+  </script>
+</AdminLayout>
+
+<style>
+  .auth-card :global(.auth-stamp) {
+    position: absolute;
+    right: -26px;
+    bottom: -30px;
+    width: 120px;
+    height: 120px;
+    opacity: 0.85;
+    transform: rotate(-14deg);
+    pointer-events: none;
+  }
+</style>

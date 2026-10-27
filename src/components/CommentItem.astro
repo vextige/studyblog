@@ -1,0 +1,46 @@
+---
+// 댓글 한 개 (+ 그 아래 답글들)
+import Icon from './Icon.astro';
+import type { PublicComment } from '../lib/comments';
+import { CornerDownRight, Trash } from '../lib/icons';
+import { formatDateTime, relativeTime } from '../lib/time';
+
+interface Props {
+  comment: PublicComment;
+  allowReply: boolean;
+}
+
+const { comment, allowReply } = Astro.props;
+---
+
+<li class="comment" id={`comment-${comment.id}`} data-comment-id={comment.id}>
+  <div class="comment-head">
+    <span class="comment-name">{comment.authorName}</span>
+    {comment.isAdmin && <span class="owner-badge">글쓴이</span>}
+    <time class="comment-time" datetime={comment.createdAt.toISOString()} title={formatDateTime(comment.createdAt)}>
+      {relativeTime(comment.createdAt)}
+    </time>
+  </div>
+  <p class="comment-body">{comment.body}</p>
+  <div class="comment-actions">
+    {
+      allowReply && (
+        <button class="text-btn" type="button" data-reply={comment.id} data-reply-name={comment.authorName}>
+          <Icon icon={CornerDownRight} /> 답글
+        </button>
+      )
+    }
+    <button class="text-btn" type="button" data-delete-own={comment.id} hidden>
+      <Icon icon={Trash} /> 내 댓글 지우기
+    </button>
+  </div>
+  {
+    comment.replies.length > 0 && (
+      <ol class="replies">
+        {comment.replies.map((reply) => (
+          <Astro.self comment={reply} allowReply={false} />
+        ))}
+      </ol>
+    )
+  }
+</li>

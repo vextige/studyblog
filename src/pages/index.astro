@@ -1,58 +1,212 @@
 ---
-// 홈: 진행 바 + 최근 글
-import PostItem from '../components/PostItem.astro';
-import { SITE_DESCRIPTION, SITE_TITLE, TOTAL_DAYS } from '../consts';
+import GoalCard from '../components/GoalCard.astro';
+import Icon from '../components/Icon.astro';
+import PostList from '../components/PostList.astro';
+import SocialLinks from '../components/SocialLinks.astro';
+import StampBoard from '../components/StampBoard.astro';
+import TagChip from '../components/TagChip.astro';
+import TodayCard from '../components/TodayCard.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getPosts, url } from '../lib/blog';
+import { computeChallenge } from '../lib/challenge';
+import { compactNumber, dayLabel } from '../lib/format';
+import { ArrowRight, Clock, Eye, PenLine } from '../lib/icons';
+import { renderHighlightLine } from '../lib/markdown';
+import { activeGoalsPreview } from '../lib/goals';
+import { getHomeData } from '../lib/posts';
+import { getSiteChrome } from '../lib/site';
+import { listTags } from '../lib/tags';
+import { formatDate } from '../lib/time';
 
-const posts = await getPosts();
-// 지금까지 쓴 글 중 가장 큰 Day 번호 = 현재 진행한 날
-const currentDay = posts.length ? Math.max(...posts.map((post) => post.data.day)) : 0;
-const percent = Math.min(100, Math.round((currentDay / TOTAL_DAYS) * 100));
-const recentPosts = posts.slice(0, 5);
+const [{ settings, navPages }, home, tags, goals] = await Promise.all([
+  getSiteChrome(Astro.locals),
+  getHomeData(),
+  listTags(),
+  activeGoalsPreview(3),
+]);
+const challenge = settings.challenge.enabled
+  ? computeChallenge(settings.challenge, home.challengeDays, home.publishedDates)
+  : null;
+const featured = home.featured;
+const recent = home.recent.filter((p) => p.id !== featured?.id).slice(0, 6);
+const usedTags = tags.filter((t) => t.count > 0);
+const aboutPage = navPages.find((p) => p.slug === 'about') ?? navPages[0];
+const isAdmin = Boolean(Astro.locals.user);
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Blog',
+  name: settings.siteTitle,
+  description: settings.siteDescription,
+  inLanguage: 'ko-KR',
+  author: { '@type': 'Person', name: settings.authorName },
+};
 ---
 
-<BaseLayout>
-  <section class="hero">
-    <h1>{SITE_TITLE}</h1>
-    <p>{SITE_DESCRIPTION}</p>
+<BaseLayout jsonLd={jsonLd}>
+  <section class="hero wrap">
+    <div class="hero-copy">
+      <p class="label hero-kicker">
+        <span class="dot" aria-hidden="true"></span>
+        {challenge ? `${settings.challenge.title} · D+${challenge.dPlus}` : settings.siteTagline}
+      </p>
+      <h1 class="hero-title" set:html={renderHighlightLine(settings.heroTitle)} />
+      <p class="hero-sub">{settings.heroSubtitle}</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="/posts">기록 읽으러 가기 <Icon icon={ArrowRight} /></a>
+        {challenge && <a class="btn btn-ghost" href="#board">도장판 보기</a>}
+      </div>
+      {
+        challenge && (
+          <p class="hero-note" aria-hidden="true">
+            <span class="hand">매일 한 칸씩 채우는 중!</span>
+            <svg viewBox="0 0 54 40" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <path d="M3 8c10-6 26-6 32 6 4 8 1 16-6 20" />
+              <path d="M27 27l1.5 8 7.5-3" />
+            </svg>
+          </p>
+        )
+      }
+    </div>
+    <TodayCard
+      challenge={challenge}
+      postCount={home.postCount}
+      totalViews={home.totalViews}
+      reactionCount={home.reactionCount}
+      studyMinutes={home.studyMinutes}
+    />
   </section>
 
-  <section class="progress-card" aria-labelledby="progress-heading">
-    <div class="progress-head">
-      <h2 id="progress-heading">진행 상황</h2>
-      <p class="progress-count"><strong>Day {currentDay}</strong> / {TOTAL_DAYS}</p>
-    </div>
-    <div
-      class="progress-track"
-      role="progressbar"
-      aria-label={`${TOTAL_DAYS}일 중 진행한 날`}
-      aria-valuemin="0"
-      aria-valuemax={TOTAL_DAYS}
-      aria-valuenow={currentDay}
-    >
-      <div class="progress-fill" style={`width: ${percent}%`}></div>
-    </div>
-    <p class="progress-note">
-      {percent}% 완료 · 남은 날 {TOTAL_DAYS - currentDay}일 · 쓴 글 {posts.length}개
-    </p>
-  </section>
+  {challenge && <StampBoard title={settings.challenge.title} challenge={challenge} />}
 
-  <section aria-labelledby="recent-heading">
-    <div class="section-head">
-      <h2 id="recent-heading">최근 글</h2>
-      <a href={url('posts/')}>전체 글 보기 →</a>
+  {
+    featured && (
+      <section class="section wrap" aria-label="추천 기록">
+        <article class="featured sheet">
+          <span class="tape" aria-hidden="true" />
+          <div>
+            <span class="label">Pinned · 추천 기록</span>
+            <h3>
+              <a href={`/posts/${encodeURIComponent(featured.slug)}`} style={`view-transition-name: post-${featured.id}`}>
+                {featured.title}
+              </a>
+            </h3>
+            {featured.excerpt && <p>{featured.excerpt}</p>}
+            <div class="post-meta">
+              {featured.dayNumber && <span>DAY {dayLabel(featured.dayNumber)}</span>}
+              <span>{formatDate(featured.publishedAt)}</span>
+              <span>
+                <Icon icon={Clock} /> {featured.readingMinutes}분
+              </span>
+              <span>
+                <Icon icon={Eye} /> {compactNumber(featured.viewCount)}
+              </span>
+            </div>
+          </div>
+          <div class="featured-media">
+            {featured.coverUrl ? (
+              <img class="featured-cover" src={featured.coverUrl} alt="" loading="lazy" decoding="async" />
+            ) : (
+              <div class="featured-cover is-blank" aria-hidden="true">
+                {featured.dayNumber ? dayLabel(featured.dayNumber) : '★'}
+              </div>
+            )}
+          </div>
+        </article>
+      </section>
+    )
+  }
+
+  <section class="section wrap home-grid">
+    <div>
+      <header class="section-head">
+        <div>
+          <span class="label">Latest</span>
+          <h2>최근 기록</h2>
+        </div>
+        {home.postCount > 0 && <a class="more-link" href="/posts">전체 {home.postCount}개 보기 <Icon icon={ArrowRight} /></a>}
+      </header>
+      {
+        recent.length > 0 ? (
+          <PostList posts={recent} />
+        ) : (
+          <div class="empty">
+            <p class="hand">첫 기록을 기다리는 중…</p>
+            <p>오늘 공부한 걸 한 줄이라도 남겨 보세요.</p>
+            {isAdmin && (
+              <a class="btn btn-primary" href="/admin/posts/new" data-astro-prefetch="false">
+                <Icon icon={PenLine} /> 첫 글 쓰기
+              </a>
+            )}
+          </div>
+        )
+      }
     </div>
-    {
-      recentPosts.length ? (
-        <ul class="post-list">
-          {recentPosts.map((post) => (
-            <PostItem post={post} />
-          ))}
-        </ul>
-      ) : (
-        <p class="empty">아직 글이 없어요. 첫 글을 써 볼까요?</p>
-      )
-    }
+
+    <aside class="side" aria-label="글쓴이와 태그">
+      <div class="side-card sheet profile">
+        <div class="profile-top">
+          {
+            settings.avatarMediaId ? (
+              <img class="avatar" src={`/media/${settings.avatarMediaId}`} alt="" width="56" height="56" />
+            ) : (
+              <span class="avatar is-initial" aria-hidden="true">
+                {settings.authorName.slice(0, 1)}
+              </span>
+            )
+          }
+          <div>
+            <p class="profile-name">{settings.authorName}</p>
+            {aboutPage && <a class="more-link" href={`/${aboutPage.slug}`}>{aboutPage.title} <Icon icon={ArrowRight} /></a>}
+          </div>
+        </div>
+        {settings.authorBio && <p class="profile-bio">{settings.authorBio}</p>}
+        <SocialLinks social={settings.social} />
+      </div>
+
+      {
+        settings.nowStudying.length > 0 && (
+          <div class="side-card sheet">
+            <h3>
+              지금 공부 중 <span class="label">Now</span>
+            </h3>
+            <ul class="study-list">
+              {settings.nowStudying.map((item) => (
+                <li>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+
+      {
+        goals.length > 0 && (
+          <div class="side-card sheet">
+            <h3>
+              진행 중인 목표 <a class="more-link" href="/goals">보드 보기</a>
+            </h3>
+            <div class="goal-mini-list">
+              {goals.map((goal) => (
+                <GoalCard goal={goal} compact />
+              ))}
+            </div>
+          </div>
+        )
+      }
+
+      {
+        usedTags.length > 0 && (
+          <div class="side-card sheet">
+            <h3>
+              태그 <a class="more-link" href="/tags">모두 보기</a>
+            </h3>
+            <div class="tags">
+              {usedTags.map((tag) => (
+                <TagChip tag={tag} count={tag.count} />
+              ))}
+            </div>
+          </div>
+        )
+      }
+    </aside>
   </section>
 </BaseLayout>

@@ -1,0 +1,280 @@
+/* 목표 보드 · 목표 카드 (방문자 화면과 관리자 화면에서 함께 써요) */
+
+.goal-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+.goal-stat {
+  display: grid;
+  align-content: space-between;
+  gap: 10px;
+  min-width: 138px;
+  padding: 14px 18px 16px;
+}
+.goal-stat b {
+  font: 700 26px/1 var(--font-mono);
+  letter-spacing: -0.04em;
+}
+.goal-stat b small {
+  margin-left: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ink-3);
+}
+.goal-stat b.is-stamp {
+  color: var(--stamp);
+}
+.goal-stat.is-link {
+  transition:
+    transform 0.18s var(--ease-out),
+    box-shadow 0.18s var(--ease-out);
+}
+.goal-stat.is-link:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 3px 3px 0 var(--ink);
+  border-color: var(--ink);
+}
+.goal-add {
+  align-self: center;
+  margin-left: auto;
+}
+
+.goal-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+.goal-col {
+  display: grid;
+  gap: 22px;
+}
+.goal-col-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 2px 10px;
+  border-bottom: 1.5px solid var(--ink);
+}
+.goal-col-head h2 {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+.goal-col-head small {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.goal-empty {
+  padding: 26px 16px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--ink-3);
+  border: 1.5px dashed var(--rule-strong);
+  border-radius: var(--radius);
+}
+
+.goal-card {
+  --hl: var(--hl-lime);
+  position: relative;
+  display: grid;
+  gap: 12px;
+  padding: 24px 20px 18px;
+}
+.goal-card .tape {
+  --tape: var(--hl);
+  top: -11px;
+  left: 50%;
+  width: 82px;
+  height: 22px;
+  transform: translateX(-50%) rotate(-2.5deg);
+}
+.goal-card:nth-child(even) .tape {
+  transform: translateX(-50%) rotate(2deg);
+}
+.goal-card.is-compact {
+  gap: 8px;
+  padding: 14px 16px;
+  box-shadow: none;
+}
+.goal-card.is-compact h3 {
+  font-size: 15.5px;
+}
+.goal-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.goal-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 11.5px/1 var(--font-mono);
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+.goal-status::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.goal-card[data-status='active'] .goal-status {
+  color: var(--pen);
+}
+.goal-card[data-status='done'] .goal-status {
+  color: var(--stamp);
+}
+.goal-card[data-status='paused'] {
+  opacity: 0.68;
+}
+.dday {
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: var(--paper-2);
+  font: 700 11.5px/1 var(--font-mono);
+  color: var(--ink-2);
+}
+.dday.is-soon {
+  background: var(--stamp-soft);
+  color: var(--stamp);
+}
+.goal-card h3 {
+  font-size: 18px;
+  font-weight: 780;
+  line-height: 1.4;
+  letter-spacing: -0.03em;
+}
+.goal-card[data-status='done'] h3 {
+  text-decoration: line-through;
+  text-decoration-color: var(--stamp);
+  text-decoration-thickness: 2px;
+}
+.goal-note {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  white-space: pre-line;
+}
+
+/* 형광펜으로 칠해 나가는 진행 막대 */
+.goal-meter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.goal-meter .track {
+  position: relative;
+  height: 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px 8px 4px 9px / 8px 4px 8px 3px;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), var(--rule) calc(10% - 1px) 10%);
+  overflow: hidden;
+}
+.goal-meter .fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--p, 0%);
+  background: var(--hl);
+  border-radius: inherit;
+  transition: width 0.6s var(--ease-out);
+}
+.goal-meter .pct {
+  min-width: 4ch;
+  text-align: right;
+  font: 650 13px/1 var(--font-mono);
+}
+
+.goal-steps {
+  display: grid;
+  gap: 1px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.goal-steps li,
+.goal-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.goal-steps li {
+  padding: 3px 0;
+}
+.goal-step {
+  width: 100%;
+  margin: -3px 0;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.goal-step:hover {
+  background: var(--paper-2);
+}
+.goal-steps .box {
+  flex: none;
+  position: relative;
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  border: 1.5px solid var(--ink-2);
+  border-radius: 4px 6px 4px 5px;
+}
+.goal-steps .is-done .box {
+  border-color: var(--on-hl);
+  background: var(--hl);
+}
+.goal-steps .is-done .box::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0;
+  width: 5px;
+  height: 10px;
+  border: solid var(--on-hl);
+  border-width: 0 2px 2px 0;
+  transform: rotate(40deg);
+}
+.goal-steps .is-done .text {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+.goal-stamp {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  width: 62px;
+  height: 62px;
+  color: var(--stamp);
+  opacity: 0.85;
+  transform: rotate(-12deg);
+  filter: url(#ink-rough);
+  pointer-events: none;
+}
+
+.goal-mini-list {
+  display: grid;
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .goal-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .goal-add {
+    margin-left: 0;
+  }
+}

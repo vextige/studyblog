@@ -1,0 +1,38 @@
+---
+// lucide 아이콘을 <svg>로 그려요. 예) <Icon icon={Search} />
+import type { IconNode } from '../lib/icons';
+
+interface Props {
+  icon: IconNode;
+  size?: number;
+  strokeWidth?: number;
+  class?: string;
+  /** 아이콘만 있는 버튼이면 화면 읽기 프로그램용 이름을 적어 주세요. */
+  label?: string;
+}
+
+const { icon, size = 20, strokeWidth = 2, class: className, label } = Astro.props;
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width={strokeWidth}
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  class={className}
+  role={label ? 'img' : undefined}
+  aria-label={label}
+  aria-hidden={label ? undefined : 'true'}
+>
+  {
+    icon.map(([tag, attrs]) => {
+      const Tag = tag;
+      return <Tag {...attrs} />;
+    })
+  }
+</svg>

@@ -1,0 +1,33 @@
+---
+// 고정 페이지 (소개 등). 관리자 화면 → 페이지에서 만들고 고쳐요.
+import Icon from '../components/Icon.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Pencil } from '../lib/icons';
+import { getPublishedPage } from '../lib/pages';
+import { formatDate } from '../lib/time';
+
+const slug = Astro.params.slug ?? '';
+const page = await getPublishedPage(slug);
+if (!page) return new Response(null, { status: 404, statusText: 'Not Found' });
+const isAdmin = Boolean(Astro.locals.user);
+---
+
+<BaseLayout title={page.title}>
+  <div class="wrap page-sheet">
+    <article class="article sheet" style="margin-top: 40px">
+      <div class="note-head">
+        <span class="nf">PAGE <b>{page.slug.toUpperCase()}</b></span>
+        <span class="nf">UPDATED <b>{formatDate(page.updatedAt)}</b></span>
+      </div>
+      <h1 class="article-title">{page.title}</h1>
+      <div class="prose" set:html={page.contentHtml} />
+    </article>
+  </div>
+  {
+    isAdmin && (
+      <a class="btn btn-primary edit-fab" href={`/admin/pages/${page.id}`} data-astro-prefetch="false">
+        <Icon icon={Pencil} /> 이 페이지 고치기
+      </a>
+    )
+  }
+</BaseLayout>

@@ -1,0 +1,23 @@
+// Cloudflare Workers 설정 파일이에요.
+// - 비밀 값(토큰, 키)은 절대 여기에 적지 않아요. `npx wrangler secret put 이름`으로 따로 넣어요.
+// - 내 컴퓨터에서 쓸 비밀 값은 .dev.vars 파일에 적어요. (.gitignore에 들어 있어서 GitHub에 안 올라가요)
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "studyblog",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "studyblog",
+      // `npx wrangler d1 create studyblog`로 만든 데이터베이스 ID. (비밀 값이 아니에요)
+      "database_id": "bc4eebb5-3918-4c5e-8bba-b00a67688915",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    // 실제 사이트 주소. 패스키 로그인, RSS, 사이트맵, 공유 링크가 이 주소를 기준으로 만들어져요.
+    "SITE_URL": "https://studyblog.maeumssi.workers.dev"
+  }
+}

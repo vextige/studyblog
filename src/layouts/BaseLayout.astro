@@ -1,99 +1,104 @@
 ---
-// 모든 페이지가 공유하는 틀: 머리글(메뉴), 본문 자리, 바닥글
-import '../styles/global.css';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
-import { url } from '../lib/blog';
+/**
+ * 방문자 화면의 공통 틀: <head>(제목, 검색 엔진·SNS 미리보기 정보), 머리글, 바닥글, 검색 창
+ */
+import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+import '@fontsource-variable/jetbrains-mono';
+import '@fontsource/nanum-pen-script';
+import '../styles/base.css';
+import '../styles/prose.css';
+import '../styles/site.css';
+
+import SearchDialog from '../components/SearchDialog.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SvgSprites from '../components/SvgSprites.astro';
+import { absoluteUrl } from '../lib/runtime';
+import { getSiteChrome } from '../lib/site';
 
 interface Props {
+  /** 화면 제목 (없으면 블로그 이름만) */
   title?: string;
   description?: string;
+  /** 공유 미리보기 이미지 주소 (/media/... 또는 전체 주소) */
+  image?: string | null;
+  type?: 'website' | 'article';
+  noindex?: boolean;
+  canonicalPath?: string;
+  article?: { publishedTime: Date; modifiedTime: Date; tags: string[] };
+  jsonLd?: Record<string, unknown>;
+  showRuler?: boolean;
 }
 
-const { title, description = SITE_DESCRIPTION } = Astro.props;
-const pageTitle = title ? `${title} | ${SITE_TITLE}` : SITE_TITLE;
+const {
+  title,
+  description,
+  image,
+  type = 'website',
+  noindex = false,
+  canonicalPath,
+  article,
+  jsonLd,
+  showRuler = false,
+} = Astro.props;
 
-const nav = [
-  { href: url(''), label: '홈' },
-  { href: url('posts/'), label: '글 목록' },
-  { href: url('about/'), label: '소개' },
-];
-const path = Astro.url.pathname.replace(/\/?$/, '/');
-const isCurrent = (href: string) => (href === url('') ? path === href : path.startsWith(href));
+const { settings, navPages, tags } = await getSiteChrome(Astro.locals);
+const fullTitle = title ? `${title} · ${settings.siteTitle}` : `${settings.siteTitle} — ${settings.siteTagline}`;
+const desc = (description || settings.siteDescription).slice(0, 200);
+const canonical = absoluteUrl(Astro.url, canonicalPath ?? Astro.url.pathname);
+const ogImage = absoluteUrl(Astro.url, image || '/og.png');
+const ldJson = jsonLd ? JSON.stringify(jsonLd).replace(/</g, '\\u003c') : null;
 ---
 
 <!doctype html>
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{pageTitle}</title>
-    <meta name="description" content={description} />
-    <link rel="icon" type="image/svg+xml" href={url('favicon.svg')} />
-    <!-- 화면이 그려지기 전에 저장된 테마를 적용해서 깜빡임을 막아요 -->
-    <script is:inline>
-      try {
-        const saved = localStorage.getItem('theme');
-        if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved;
-      } catch {}
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <script is:inline set:html={__THEME_INIT__} />
+    <title>{fullTitle}</title>
+    <meta name="description" content={desc} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <meta name="theme-color" content="#f4f2ea" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111114" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="alternate" type="application/rss+xml" title={settings.siteTitle} href={absoluteUrl(Astro.url, '/rss.xml')} />
+
+    <meta property="og:site_name" content={settings.siteTitle} />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={title ?? settings.siteTitle} />
+    <meta property="og:description" content={desc} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    {
+      article && (
+        <>
+          <meta property="article:published_time" content={article.publishedTime.toISOString()} />
+          <meta property="article:modified_time" content={article.modifiedTime.toISOString()} />
+          {article.tags.map((tag) => (
+            <meta property="article:tag" content={tag} />
+          ))}
+        </>
+      )
+    }
+    {ldJson && <script is:inline type="application/ld+json" set:html={ldJson} />}
   </head>
   <body>
-    <header class="site-header">
-      <div class="container header-inner">
-        <a class="site-title" href={url('')}>{SITE_TITLE}</a>
-        <nav class="site-nav" aria-label="주요 메뉴">
-          <ul>
-            {
-              nav.map((item) => (
-                <li>
-                  <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
-                    {item.label}
-                  </a>
-                </li>
-              ))
-            }
-          </ul>
-        </nav>
-        <button
-          type="button"
-          class="theme-toggle"
-          data-theme-toggle
-          aria-label="밝은 화면 / 어두운 화면 바꾸기"
-          title="밝은 화면 / 어두운 화면 바꾸기"
-        >
-          <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path>
-          </svg>
-          <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="4"></circle>
-            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
-          </svg>
-        </button>
-      </div>
-    </header>
-
-    <main class="container">
+    <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+    <SvgSprites />
+    <SiteHeader siteTitle={settings.siteTitle} navPages={navPages} showRuler={showRuler} />
+    <main id="main">
       <slot />
     </main>
-
-    <footer class="site-footer">
-      <div class="container">
-        © {new Date().getFullYear()} {SITE_TITLE} · 하루 1시간, 100일 동안
-      </div>
-    </footer>
-
+    <SiteFooter settings={settings} />
+    <SearchDialog tags={tags} />
     <script>
-      // 테마 버튼: 누를 때마다 밝은 화면 ↔ 어두운 화면, 선택은 브라우저에 기억해요
-      const root = document.documentElement;
-      document.querySelector('[data-theme-toggle]')?.addEventListener('click', () => {
-        const current =
-          root.dataset.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        const next = current === 'dark' ? 'light' : 'dark';
-        root.dataset.theme = next;
-        try {
-          localStorage.setItem('theme', next);
-        } catch {}
-      });
+      import '../scripts/site';
     </script>
   </body>
 </html>

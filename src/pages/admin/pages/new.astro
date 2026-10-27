@@ -1,0 +1,11 @@
+---
+import PageEditor from '../../../components/admin/PageEditor';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="새 페이지" kicker="Pages">
+  <PageEditor
+    client:only="preact"
+    initial={{ id: null, title: '', slug: '', contentMd: '', published: true, showInNav: true, navOrder: 10, updatedAt: null }}
+  />
+</AdminLayout>

@@ -1,0 +1,25 @@
+---
+import PageEditor from '../../../components/admin/PageEditor';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getPageForEdit } from '../../../lib/pages';
+
+const id = Number(Astro.params.id);
+const page = Number.isInteger(id) && id > 0 ? await getPageForEdit(id) : undefined;
+if (!page) return new Response(null, { status: 404 });
+---
+
+<AdminLayout title="페이지 고치기" kicker={`Pages · /${page.slug}`}>
+  <PageEditor
+    client:only="preact"
+    initial={{
+      id: page.id,
+      title: page.title,
+      slug: page.slug,
+      contentMd: page.contentMd,
+      published: page.published,
+      showInNav: page.showInNav,
+      navOrder: page.navOrder,
+      updatedAt: page.updatedAt.getTime(),
+    }}
+  />
+</AdminLayout>

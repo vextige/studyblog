@@ -1,0 +1,315 @@
+---
+// 글 화면: 노트 한 장 + 목차 + 반응 스티커 + 댓글
+import { actions } from 'astro:actions';
+import BigStamp from '../../components/BigStamp.astro';
+import CommentItem from '../../components/CommentItem.astro';
+import Icon from '../../components/Icon.astro';
+import PostList from '../../components/PostList.astro';
+import TagChip from '../../components/TagChip.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { actionErrorMessage } from '../../lib/admin-forms';
+import { countComments, listApprovedComments } from '../../lib/comments';
+import { getReactionSummary, REACTIONS } from '../../lib/engagement';
+import { compactNumber, dayLabel, formatStudyTime } from '../../lib/format';
+import { ArrowLeft, Eye, Link, Pencil, Send, Share2, X } from '../../lib/icons';
+import { getAdjacentPosts, getPublishedPost, getRelatedPosts } from '../../lib/posts';
+import { absoluteUrl } from '../../lib/runtime';
+import { ipHash } from '../../lib/security';
+import { getSiteChrome } from '../../lib/site';
+import { formatDate, kstDay } from '../../lib/time';
+import { REACTION_KINDS } from '../../db/schema';
+
+const slug = Astro.params.slug ?? '';
+const found = await getPublishedPost(slug);
+if (!found) return new Response(null, { status: 404, statusText: 'Not Found' });
+if ('redirectTo' in found) return Astro.redirect(`/posts/${encodeURIComponent(found.redirectTo)}`, 301);
+const { post } = found;
+
+const [{ settings }, adjacent, related, comments, reactions] = await Promise.all([
+  getSiteChrome(Astro.locals),
+  getAdjacentPosts(post),
+  getRelatedPosts(
+    post.id,
+    post.tags.map((t) => t.id),
+  ),
+  listApprovedComments(post.id),
+  ipHash(Astro.request).then((hash) => getReactionSummary(post.id, hash)),
+]);
+
+const commentsOpen = settings.comments.enabled && post.allowComments;
+const commentTotal = countComments(comments);
+const isAdmin = Boolean(Astro.locals.user);
+const edited = kstDay(post.updatedAt) !== kstDay(post.publishedAt);
+
+// 자바스크립트가 꺼진 브라우저에서 댓글을 보냈을 때의 결과
+const commentResult = Astro.getActionResult(actions.comments.create);
+const commentNotice = commentResult
+  ? commentResult.error
+    ? { tone: 'error', message: actionErrorMessage(commentResult.error) }
+    : {
+        tone: 'ok',
+        message: commentResult.data.status === 'approved' ? '댓글이 등록됐어요.' : '댓글을 받았어요. 글쓴이가 확인하면 공개돼요.',
+      }
+  : null;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: post.title,
+  description: post.excerpt,
+  datePublished: post.publishedAt.toISOString(),
+  dateModified: post.updatedAt.toISOString(),
+  inLanguage: 'ko-KR',
+  author: { '@type': 'Person', name: settings.authorName },
+  keywords: post.tags.map((t) => t.name).join(', '),
+  mainEntityOfPage: absoluteUrl(Astro.url, `/posts/${encodeURIComponent(post.slug)}`),
+  ...(post.ogUrl ? { image: absoluteUrl(Astro.url, post.ogUrl) } : {}),
+};
+const tilts = ['-3deg', '2deg', '-1.5deg', '3deg'];
+---
+
+<BaseLayout
+  title={post.title}
+  description={post.excerpt}
+  image={post.ogUrl}
+  type="article"
+  canonicalPath={`/posts/${encodeURIComponent(post.slug)}`}
+  article={{ publishedTime: post.publishedAt, modifiedTime: post.updatedAt, tags: post.tags.map((t) => t.name) }}
+  jsonLd={jsonLd}
+  showRuler
+>
+  <div class="wrap article-layout">
+    <div>
+      <a class="back-link" href="/posts"><Icon icon={ArrowLeft} /> 모든 기록</a>
+
+      <article class="article sheet" data-post-id={post.id}>
+        <div class="note-head">
+          <span class="nf">NO. <b class:list={{ 'is-day': post.dayNumber }}>{post.dayNumber ? dayLabel(post.dayNumber) : '—'}</b></span>
+          <span class="nf">DATE <b><time datetime={post.publishedAt.toISOString()}>{formatDate(post.publishedAt)}</time></b></span>
+          {post.studyMinutes ? <span class="nf">STUDY <b>{formatStudyTime(post.studyMinutes)}</b></span> : null}
+          <span class="nf">READ <b>{post.readingMinutes}분</b></span>
+        </div>
+
+        <h1 class="article-title" style={`view-transition-name: post-${post.id}`}>{post.title}</h1>
+
+        <div class="article-sub">
+          <div class="tags">
+            {post.tags.map((tag) => <TagChip tag={tag} />)}
+          </div>
+          <div class="post-meta">
+            <span><Icon icon={Eye} /> {compactNumber(post.viewCount)}</span>
+            {edited && <span>수정 {formatDate(post.updatedAt)}</span>}
+          </div>
+        </div>
+
+        {post.coverUrl && <img class="article-cover" src={post.coverUrl} alt="" decoding="async" />}
+
+        {
+          post.toc.length > 1 && (
+            <details class="toc-inline">
+              <summary>목차 보기</summary>
+              <ol>
+                {post.toc.map((item) => (
+                  <li class={`lv${item.level}`}>
+                    <a href={`#${item.id}`}>{item.text}</a>
+                  </li>
+                ))}
+              </ol>
+            </details>
+          )
+        }
+
+        <div class="prose" set:html={post.contentHtml} />
+
+        <footer class="article-end">
+          <div class="done-stamp" data-done-stamp aria-hidden="true">
+            <BigStamp id="done" day={post.dayNumber} date={formatDate(post.publishedAt)} />
+          </div>
+          <div class="end-row">
+            <div>
+              <p class="label">이 기록에 스티커 붙이기</p>
+              <div class="stickers" data-reactions data-post-id={post.id}>
+                {
+                  REACTION_KINDS.map((kind, i) => (
+                    <button
+                      class="sticker"
+                      type="button"
+                      data-reaction={kind}
+                      aria-pressed={reactions.mine.includes(kind) ? 'true' : 'false'}
+                      style={`--tilt: ${tilts[i]}`}
+                      aria-label={`${REACTIONS[kind].label} 스티커`}
+                    >
+                      <span class="emoji" aria-hidden="true">{REACTIONS[kind].emoji}</span>
+                      {REACTIONS[kind].label}
+                      <span class="count">{reactions.counts[kind]}</span>
+                    </button>
+                  ))
+                }
+              </div>
+            </div>
+            <div class="share-row">
+              <button class="btn btn-sm btn-ghost" type="button" data-copy-link><Icon icon={Link} /> 링크 복사</button>
+              <button class="btn btn-sm btn-ghost" type="button" data-share hidden><Icon icon={Share2} /> 공유</button>
+            </div>
+          </div>
+        </footer>
+      </article>
+
+      <nav class="prevnext" aria-label="이전 글, 다음 글">
+        {
+          adjacent.older ? (
+            <a class="pn prev" href={`/posts/${encodeURIComponent(adjacent.older.slug)}`} rel="prev">
+              <span class="label">← 이전 기록{adjacent.older.dayNumber ? ` · DAY ${dayLabel(adjacent.older.dayNumber)}` : ''}</span>
+              <strong>{adjacent.older.title}</strong>
+            </a>
+          ) : (
+            <span class="pn is-empty" />
+          )
+        }
+        {
+          adjacent.newer ? (
+            <a class="pn next" href={`/posts/${encodeURIComponent(adjacent.newer.slug)}`} rel="next">
+              <span class="label">다음 기록{adjacent.newer.dayNumber ? ` · DAY ${dayLabel(adjacent.newer.dayNumber)}` : ''} →</span>
+              <strong>{adjacent.newer.title}</strong>
+            </a>
+          ) : (
+            <span class="pn is-empty" />
+          )
+        }
+      </nav>
+
+      {
+        related.length > 0 && (
+          <section class="related" aria-labelledby="related-title">
+            <header class="section-head">
+              <div>
+                <span class="label">Related</span>
+                <h2 id="related-title">같이 읽으면 좋은 기록</h2>
+              </div>
+            </header>
+            <PostList posts={related} />
+          </section>
+        )
+      }
+
+      {
+        (commentsOpen || commentTotal > 0) && (
+          <section class="comments" id="comments" aria-labelledby="comments-title">
+            <div class="comments-sheet sheet">
+              <header class="section-head">
+                <div>
+                  <span class="label">Comments</span>
+                  <h2 id="comments-title">
+                    댓글 <span class="mono" data-comment-count>{commentTotal}</span>
+                  </h2>
+                </div>
+              </header>
+
+              {commentNotice && (
+                <p class:list={['notice', commentNotice.tone === 'ok' ? 'notice-ok' : 'notice-error']} role="status">
+                  {commentNotice.message}
+                </p>
+              )}
+
+              {commentsOpen ? (
+                <form class="comment-form" method="post" action={actions.comments.create} data-comment-form>
+                  <input type="hidden" name="postId" value={post.id} />
+                  <input type="hidden" name="parentId" value="" data-parent-input />
+                  <input type="hidden" name="startedAt" value="" data-started-at />
+                  <label class="hp-field" aria-hidden="true">
+                    웹사이트 (비워 두세요)
+                    <input type="text" name="website" tabindex="-1" autocomplete="off" />
+                  </label>
+                  <div class="replying" data-replying hidden>
+                    <span>
+                      <b data-replying-name /> 님에게 답글 쓰는 중
+                    </span>
+                    <button class="text-btn" type="button" data-reply-cancel>
+                      <Icon icon={X} /> 취소
+                    </button>
+                  </div>
+                  <label class="sr-only" for="comment-body">댓글 내용</label>
+                  <textarea
+                    class="textarea"
+                    id="comment-body"
+                    name="body"
+                    required
+                    minlength="2"
+                    maxlength="2000"
+                    rows="4"
+                    placeholder={isAdmin ? '답장이나 덧붙일 말을 남겨요.' : '응원, 질문, 더 좋은 방법… 편하게 남겨 주세요.'}
+                  />
+                  <div class="row">
+                    <label class="sr-only" for="comment-name">이름</label>
+                    <input
+                      class="input"
+                      id="comment-name"
+                      name="authorName"
+                      required
+                      maxlength="30"
+                      autocomplete="nickname"
+                      placeholder="이름 (닉네임)"
+                      value={isAdmin ? settings.authorName : undefined}
+                      readonly={isAdmin}
+                      data-comment-name
+                    />
+                    <div class="actions">
+                      <span class="hint">
+                        {settings.comments.moderation === 'manual' && !isAdmin
+                          ? '글쓴이가 확인한 뒤 공개돼요.'
+                          : '이메일은 받지 않아요.'}
+                      </span>
+                      <button class="btn btn-primary" type="submit">
+                        <Icon icon={Send} /> 남기기
+                      </button>
+                    </div>
+                  </div>
+                  <p class="notice" data-comment-status role="status" hidden />
+                </form>
+              ) : (
+                <p class="hint">이 기록은 댓글을 닫아 두었어요.</p>
+              )}
+
+              <ol class="comment-list" data-comment-list>
+                {comments.map((comment) => (
+                  <CommentItem comment={comment} allowReply={commentsOpen} />
+                ))}
+              </ol>
+            </div>
+          </section>
+        )
+      }
+    </div>
+
+    <aside class="article-aside" aria-label="목차">
+      {
+        post.toc.length > 1 && (
+          <nav class="toc" data-toc>
+            <span class="label">On this page</span>
+            <ol>
+              {post.toc.map((item) => (
+                <li class={`lv${item.level}`}>
+                  <a href={`#${item.id}`}>
+                    <span>{item.text}</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )
+      }
+    </aside>
+  </div>
+
+  {
+    isAdmin && (
+      <a class="btn btn-primary edit-fab" href={`/admin/posts/${post.id}`} data-astro-prefetch="false">
+        <Icon icon={Pencil} /> 이 글 고치기
+      </a>
+    )
+  }
+
+  <script>
+    import '../../scripts/article';
+  </script>
+</BaseLayout>

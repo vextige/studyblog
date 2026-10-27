@@ -1,0 +1,185 @@
+---
+// 관리자 첫 화면: 오늘 할 일, 숫자 요약, 최근 30일 조회수, 최근 고친 글, 진행 중 목표
+import GoalCard from '../../components/GoalCard.astro';
+import Icon from '../../components/Icon.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { takeFlash } from '../../lib/admin-forms';
+import { computeChallenge } from '../../lib/challenge';
+import { listCommentsForAdmin } from '../../lib/comments';
+import { topPosts, viewsByDay } from '../../lib/engagement';
+import { compactNumber, dayLabel, formatNumber } from '../../lib/format';
+import { activeGoalsPreview } from '../../lib/goals';
+import { ArrowRight, MessageSquare, PenLine } from '../../lib/icons';
+import { getHomeData, listAdminPosts, statusLabel } from '../../lib/posts';
+import { getSiteChrome } from '../../lib/site';
+import { formatDate, kstDay, relativeTime } from '../../lib/time';
+
+const flash = takeFlash(Astro.cookies);
+const [{ settings }, home, list, pending, views, top, goals] = await Promise.all([
+  getSiteChrome(Astro.locals),
+  getHomeData(),
+  listAdminPosts({ filter: 'all', perPage: 6 }),
+  listCommentsForAdmin('pending', 1, 4),
+  viewsByDay(30),
+  topPosts(30, 5),
+  activeGoalsPreview(4),
+]);
+const challenge = settings.challenge.enabled
+  ? computeChallenge(settings.challenge, home.challengeDays, home.publishedDates)
+  : null;
+const streak = challenge?.streak ?? { current: 0, best: 0, writtenToday: false };
+const views30 = views.reduce((sum, d) => sum + d.views, 0);
+const peak = Math.max(1, ...views.map((d) => d.views));
+const today = kstDay();
+const studyHours = Math.round(home.studyMinutes / 6) / 10;
+---
+
+<AdminLayout title={`안녕하세요, ${settings.authorName}님`} kicker={`Dashboard · ${formatDate(Date.now())}`} flash={flash}>
+  <a slot="actions" class="btn btn-primary" href="/admin/posts/new"><Icon icon={PenLine} /> 오늘 기록 쓰기</a>
+
+  {
+    challenge && !streak.writtenToday && challenge.dPlus >= 1 && (
+      <p class="notice" style="margin-bottom: 18px">
+        <Icon icon={PenLine} />
+        <span>
+          오늘은 <b>DAY {dayLabel(Math.min(challenge.dPlus, 9999))}</b>. 아직 오늘 칸이 비어 있어요.
+          {streak.current > 0 ? ` 연속 ${streak.current}일 기록을 이어 가 볼까요?` : ' 한 줄이라도 남겨 볼까요?'}
+        </span>
+      </p>
+    )
+  }
+
+  <div class="stat-grid">
+    <div class="stat sheet"><span class="label">발행한 기록</span><b>{list.tally.published}<small>개</small></b></div>
+    <div class="stat sheet"><span class="label">임시저장</span><b>{list.tally.draft}<small>개</small></b></div>
+    <div class:list={['stat', 'sheet', { 'is-alert': pending.tally.pending > 0 }]}>
+      <span class="label">승인 대기 댓글</span><b>{pending.tally.pending}<small>개</small></b>
+    </div>
+    <div class="stat sheet"><span class="label">30일 조회</span><b>{compactNumber(views30)}</b></div>
+    <div class="stat sheet"><span class="label">연속 기록</span><b>{streak.current}<small>일 · 최고 {streak.best}</small></b></div>
+    <div class="stat sheet"><span class="label">누적 공부</span><b>{studyHours}<small>시간</small></b></div>
+  </div>
+
+  <div class="panel-grid">
+    <section class="panel sheet">
+      <div class="panel-head">
+        <h2>최근 30일 조회수</h2>
+        <p>하루 최고 {formatNumber(peak === 1 && views30 === 0 ? 0 : peak)}회</p>
+      </div>
+      <div class="bar-chart" role="img" aria-label={`최근 30일 동안 조회수 ${views30}회`}>
+        {
+          views.map((d) => (
+            <span
+              class:list={['bar', { 'is-today': d.day === today }]}
+              style={`--h: ${Math.round((d.views / peak) * 100)}%`}
+              title={`${d.day} · ${d.views}회`}
+            />
+          ))
+        }
+      </div>
+      <div class="bar-chart-axis"><span>{views[0]?.day.slice(5)}</span><span>오늘</span></div>
+      {
+        top.length > 0 && (
+          <ol class="admin-list" style="margin-top: 18px">
+            {top.map((p) => (
+              <li class="admin-row">
+                <div class="admin-row-title">
+                  <a href={`/posts/${encodeURIComponent(p.slug)}`} target="_blank" rel="noopener">{p.title}</a>
+                </div>
+                <span class="mono small muted">{formatNumber(p.views)}회</span>
+              </li>
+            ))}
+          </ol>
+        )
+      }
+    </section>
+
+    <section class="panel sheet">
+      <div class="panel-head">
+        <h2>승인을 기다리는 댓글</h2>
+        <a class="more-link" href="/admin/comments">모두 보기 <Icon icon={ArrowRight} /></a>
+      </div>
+      {
+        pending.comments.length > 0 ? (
+          <ul class="admin-list">
+            {pending.comments.map((c) => (
+              <li class="admin-row">
+                <div>
+                  <div class="admin-row-title">
+                    <Icon icon={MessageSquare} size={16} /> {c.authorName}
+                  </div>
+                  <p class="small" style="margin-top: 4px">{c.body.slice(0, 90)}{c.body.length > 90 ? '…' : ''}</p>
+                  <div class="admin-row-meta">
+                    <span>{c.postTitle}</span>
+                    <span>{relativeTime(c.createdAt)}</span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="muted small">새 댓글이 없어요. 조용한 하루!</p>
+        )
+      }
+    </section>
+  </div>
+
+  <div class="panel-grid" style="margin-top: 18px">
+    <section class="panel sheet">
+      <div class="panel-head">
+        <h2>최근 고친 기록</h2>
+        <a class="more-link" href="/admin/posts">모든 기록 <Icon icon={ArrowRight} /></a>
+      </div>
+      {
+        list.posts.length > 0 ? (
+          <ul class="admin-list">
+            {list.posts.map((p) => {
+              const s = statusLabel(p.status, p.publishedAt);
+              return (
+                <li class="admin-row">
+                  <div>
+                    <div class="admin-row-title">
+                      <span class="pill" data-tone={s.tone}>{s.label}</span>
+                      <a href={`/admin/posts/${p.id}`}>{p.title}</a>
+                    </div>
+                    <div class="admin-row-meta">
+                      {p.dayNumber && <span>DAY {dayLabel(p.dayNumber)}</span>}
+                      <span>{relativeTime(p.updatedAt)} 수정</span>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p class="muted small">아직 기록이 없어요. 첫 기록을 써 볼까요?</p>
+        )
+      }
+    </section>
+
+    <section class="panel sheet">
+      <div class="panel-head">
+        <h2>진행 중인 목표</h2>
+        <a class="more-link" href="/admin/goals">목표 관리 <Icon icon={ArrowRight} /></a>
+      </div>
+      {
+        goals.length > 0 ? (
+          <div class="goal-mini-list">
+            {goals.map((goal) => (
+              <GoalCard goal={goal} compact />
+            ))}
+          </div>
+        ) : (
+          <p class="muted small">목표를 세우면 여기서 진행률을 한눈에 볼 수 있어요.</p>
+        )
+      }
+    </section>
+  </div>
+</AdminLayout>
+
+<style>
+  .goal-mini-list {
+    display: grid;
+    gap: 10px;
+  }
+</style>

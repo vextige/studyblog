@@ -1,0 +1,53 @@
+---
+import Icon from './Icon.astro';
+import TagChip from './TagChip.astro';
+import { Search } from '../lib/icons';
+import type { TagRef } from '../lib/posts';
+
+interface Props {
+  tags: Pick<TagRef, 'slug' | 'name' | 'color'>[];
+}
+
+const { tags } = Astro.props;
+---
+
+<dialog class="search-dialog" id="search-dialog" aria-label="글 검색">
+  <form class="search-box" action="/search" method="get" role="search">
+    <Icon icon={Search} />
+    <input
+      name="q"
+      type="search"
+      placeholder="제목, 내용, 태그로 찾기…"
+      autocomplete="off"
+      spellcheck="false"
+      enterkeyhint="search"
+      aria-controls="search-results"
+      aria-autocomplete="list"
+      maxlength="80"
+      data-search-input
+    />
+    <button class="kbd" type="button" data-search-close aria-label="검색 닫기">Esc</button>
+  </form>
+  <ul class="search-results" id="search-results" role="listbox" aria-label="검색 결과" data-search-results></ul>
+  <div class="search-empty" data-search-empty>
+    <p data-search-message>궁금한 단어를 적어 보세요. 띄어쓰기로 여러 단어를 함께 찾을 수 있어요.</p>
+    {
+      tags.length > 0 && (
+        <div class="tags">
+          {tags.slice(0, 12).map((tag) => (
+            <TagChip tag={tag} />
+          ))}
+        </div>
+      )
+    }
+  </div>
+  <div class="search-foot" aria-hidden="true">
+    <span><span class="kbd">↑</span><span class="kbd">↓</span> 고르기</span>
+    <span><span class="kbd">Enter</span> 열기</span>
+    <span><span class="kbd">Esc</span> 닫기</span>
+  </div>
+</dialog>
+
+<script>
+  import '../scripts/search';
+</script>

@@ -1,15 +1,29 @@
-# 빌드 결과물 (GitHub Actions가 매번 새로 만들어요)
+# 빌드 결과물
 dist/
 .astro/
+.wrangler/
 
 # 설치된 라이브러리 (npm install 하면 다시 생겨요)
 node_modules/
 
-# 비밀 값이 들어갈 수 있는 파일은 절대 올리지 않아요
+# 비밀 값이 들어가는 파일은 절대 올리지 않아요
 .env
 .env.*
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# 데이터베이스 백업, 테스트 결과
+backups/
+seed/seed.sql
+test-results/
+playwright-report/
+tests/.auth/
 
 # 로그, 운영체제가 만드는 파일
 npm-debug.log*
 .DS_Store
 Thumbs.db
+
+# 배포용 비밀 값 메모 (내 컴퓨터에만)
+*.local

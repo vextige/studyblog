@@ -1,0 +1,62 @@
+---
+import BrandMark from './BrandMark.astro';
+import Icon from './Icon.astro';
+import { Moon, Search, SquarePen, Sun } from '../lib/icons';
+import type { NavPage } from '../lib/site';
+
+interface Props {
+  siteTitle: string;
+  navPages: NavPage[];
+  /** 글 화면에서는 읽은 만큼 차오르는 자(ruler)를 보여 줘요. */
+  showRuler?: boolean;
+}
+
+const { siteTitle, navPages, showRuler = false } = Astro.props;
+const path = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const links = [
+  { href: '/', label: '홈' },
+  { href: '/posts', label: '기록' },
+  { href: '/goals', label: '목표' },
+  { href: '/tags', label: '태그' },
+  ...navPages.map((p) => ({ href: `/${p.slug}`, label: p.title })),
+];
+const isCurrent = (href: string) => (href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`));
+---
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label={`${siteTitle} 홈으로`}>
+      <BrandMark />
+      <span class="brand-text">{siteTitle}</span>
+    </a>
+    <nav class="site-nav" aria-label="주 메뉴">
+      {
+        links.map((link) => (
+          <a href={link.href} aria-current={isCurrent(link.href) ? 'page' : undefined}>
+            {link.label}
+          </a>
+        ))
+      }
+    </nav>
+    <div class="header-tools">
+      <button class="search-trigger" type="button" data-search-open aria-label="글 검색 (단축키 Ctrl+K)">
+        <Icon icon={Search} />
+        <span class="label-text">기록 찾기</span>
+        <span class="kbd" data-shortcut>Ctrl K</span>
+      </button>
+      <button class="icon-btn theme-toggle" type="button" data-theme-toggle aria-label="밝은 화면/어두운 화면 바꾸기">
+        <Icon icon={Sun} class="sun" />
+        <Icon icon={Moon} class="moon" />
+      </button>
+      {
+        Astro.locals.user && (
+          <a class="admin-chip" href="/admin" data-astro-prefetch="false">
+            <Icon icon={SquarePen} />
+            <span>관리</span>
+          </a>
+        )
+      }
+    </div>
+  </div>
+  {showRuler && <div class="ruler" aria-hidden="true" />}
+</header>

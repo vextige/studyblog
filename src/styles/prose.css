@@ -1,0 +1,465 @@
+/* ==========================================================================
+   글 본문 (마크다운이 바뀐 HTML) — 글 화면과 글쓰기 미리보기에서 같이 써요
+   ========================================================================== */
+
+.prose {
+  font-size: 17.5px;
+  line-height: 1.85;
+  color: var(--ink);
+  counter-reset: h2;
+}
+
+.prose > * + * {
+  margin-top: 1.15em;
+}
+
+.prose h2,
+.prose h3,
+.prose h4 {
+  position: relative;
+  font-weight: 780;
+  letter-spacing: -0.03em;
+  line-height: 1.35;
+  scroll-margin-top: calc(var(--header-h) + 24px);
+}
+.prose h2 {
+  margin-top: 2.4em;
+  font-size: 1.55em;
+}
+.prose h2::before {
+  counter-increment: h2;
+  content: counter(h2, decimal-leading-zero);
+  display: block;
+  margin-bottom: 6px;
+  font: 600 12px/1 var(--font-mono);
+  letter-spacing: 0.1em;
+  color: var(--pen);
+}
+.prose h3 {
+  margin-top: 2em;
+  font-size: 1.22em;
+}
+.prose h4 {
+  margin-top: 1.7em;
+  font-size: 1.05em;
+}
+.prose h2 + *,
+.prose h3 + *,
+.prose h4 + * {
+  margin-top: 0.7em;
+}
+
+.heading-anchor {
+  margin-left: 0.35em;
+  font-weight: 500;
+  color: var(--ink-3);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.prose :is(h2, h3, h4):hover .heading-anchor,
+.heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+.prose a:not(.heading-anchor) {
+  color: var(--pen);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  text-decoration-color: color-mix(in srgb, var(--pen) 40%, transparent);
+  transition:
+    background-color 0.15s,
+    text-decoration-color 0.15s;
+  border-radius: 3px;
+}
+.prose a:not(.heading-anchor):hover {
+  text-decoration-color: currentColor;
+  background: var(--pen-soft);
+}
+
+.prose strong {
+  font-weight: 720;
+}
+
+/* 스크롤해서 보일 때 형광펜이 쓱 칠해져요 (글 화면에서만) */
+.js .prose[data-draw] mark:not(.is-drawn) {
+  background-size: 0% 100%;
+  color: inherit;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.4em;
+}
+.prose li + li {
+  margin-top: 0.35em;
+}
+.prose li > ul,
+.prose li > ol {
+  margin-top: 0.35em;
+}
+.prose ul > li::marker {
+  color: var(--pen);
+}
+.prose ol > li::marker {
+  font: 600 0.85em var(--font-mono);
+  color: var(--pen);
+}
+
+/* 체크리스트 */
+.prose li.task-item {
+  list-style: none;
+  position: relative;
+}
+.prose li.task-item::marker {
+  content: '';
+}
+.task-check {
+  appearance: none;
+  position: absolute;
+  left: -1.45em;
+  top: 0.42em;
+  width: 1.05em;
+  height: 1.05em;
+  margin: 0;
+  border: 1.5px solid var(--ink-2);
+  border-radius: 4px 5px 4px 6px;
+  background: var(--sheet);
+}
+.task-check:checked {
+  border-color: var(--pen);
+  background: var(--pen-soft);
+}
+.task-check:checked::after {
+  content: '';
+  position: absolute;
+  left: 0.26em;
+  top: 0.02em;
+  width: 0.36em;
+  height: 0.66em;
+  border: solid var(--pen);
+  border-width: 0 0.15em 0.15em 0;
+  transform: rotate(40deg);
+}
+.prose li.task-item.is-done {
+  color: var(--ink-3);
+}
+
+.prose blockquote {
+  padding: 0.2em 0 0.2em 1.1em;
+  border-left: 3px solid var(--pen);
+  color: var(--ink-2);
+}
+.prose blockquote > * + * {
+  margin-top: 0.7em;
+}
+
+.prose hr {
+  position: relative;
+  height: 0;
+  margin: 2.6em 0;
+  border: 0;
+  border-top: 1.5px dashed var(--rule-strong);
+  overflow: visible;
+}
+.prose hr::after {
+  content: '✂';
+  position: absolute;
+  left: 8%;
+  top: -0.78em;
+  padding: 0 0.4em;
+  background: var(--sheet);
+  color: var(--ink-3);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.prose :not(pre) > code {
+  padding: 0.12em 0.4em;
+  border-radius: 6px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  font: 500 0.86em/1.5 var(--font-mono);
+  word-break: break-word;
+}
+
+/* 이미지 + 손글씨 캡션 */
+.prose figure.figure {
+  margin-top: 1.8em;
+  margin-bottom: 0.3em;
+}
+.prose figure.figure img,
+.prose > p img {
+  border-radius: 12px;
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+}
+.prose figure.figure figcaption {
+  margin-top: 10px;
+  text-align: center;
+  font-family: var(--font-hand);
+  font-size: 1.3em;
+  line-height: 1.25;
+  color: var(--ink-2);
+}
+
+.embed-youtube {
+  display: block;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--rule);
+}
+.embed-youtube iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* 표 */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--sheet);
+}
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.prose th,
+.prose td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+.prose th {
+  background: var(--sheet-2);
+  font: 600 12px/1.4 var(--font-mono);
+  letter-spacing: 0.05em;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.prose tr:last-child td {
+  border-bottom: 0;
+}
+
+/* 포스트잇 상자: :::tip 같은 문법 */
+.callout {
+  --note: var(--hl-sky);
+  position: relative;
+  padding: 16px 20px 18px;
+  border-radius: 4px 4px 18px 4px;
+  background: color-mix(in srgb, var(--note) calc(34% - 20% * var(--is-dark)), var(--sheet));
+  border: 1px solid color-mix(in srgb, var(--note) calc(60% - 30% * var(--is-dark)), transparent);
+  font-size: 16px;
+  line-height: 1.75;
+}
+.callout > * + * {
+  margin-top: 0.6em;
+}
+.callout-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+.callout-tip {
+  --note: var(--hl-lime);
+}
+.callout-warn {
+  --note: var(--hl-orange);
+}
+.callout-summary {
+  --note: var(--hl-mint);
+}
+
+/* 접었다 펴는 상자 (정답 숨기기) */
+.fold {
+  border: 1.5px dashed var(--rule-strong);
+  border-radius: 14px;
+  background: var(--sheet);
+}
+.fold > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+.fold > summary::-webkit-details-marker {
+  display: none;
+}
+.fold > summary::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border: solid var(--pen);
+  border-width: 0 2px 2px 0;
+  transform: rotate(-45deg);
+  transition: transform 0.2s;
+}
+.fold[open] > summary::before {
+  transform: rotate(45deg);
+}
+.fold-body {
+  padding: 0 18px 16px 36px;
+}
+.fold-body > * + * {
+  margin-top: 0.8em;
+}
+
+/* ---------- 코드 블록: 밝은 화면에서도 칠판처럼 어둡게 ---------- */
+
+.prose figure.code {
+  position: relative;
+  margin-top: 1.6em;
+  border-radius: 14px;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  border: 1px solid light-dark(var(--code-bg), #2b2b33);
+  overflow: hidden;
+}
+.prose figure.code::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 11px;
+  right: 14px;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #77767f;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.prose figure.code:has(.code-title)::before {
+  top: 14px;
+}
+.code-title {
+  padding: 10px 16px;
+  border-bottom: 1px solid #2b2b33;
+  font: 500 12.5px/1.4 var(--font-mono);
+  color: #cfcdc6;
+}
+.prose pre {
+  margin: 0;
+  padding: 18px 20px;
+  overflow-x: auto;
+  font: 400 14px/1.7 var(--font-mono);
+  tab-size: 2;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+.prose pre code {
+  font: inherit;
+  white-space: pre;
+}
+.copy-code {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #34343d;
+  border-radius: 8px;
+  background: #1f1f26;
+  color: #cfcdc6;
+  font: 500 12px/1 var(--font-sans);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.copy-code svg {
+  width: 14px;
+  height: 14px;
+}
+.prose figure.code:has(.code-title) .copy-code {
+  top: 6px;
+}
+.prose figure.code:hover .copy-code,
+.copy-code:focus-visible,
+.copy-code.is-done {
+  opacity: 1;
+}
+.prose figure.code:hover::before {
+  opacity: 0;
+}
+@media (hover: none) {
+  .copy-code {
+    opacity: 1;
+  }
+  .prose figure.code::before {
+    opacity: 0;
+  }
+}
+
+/* 문법 강조 색 — 형광펜 색으로 */
+.hljs-comment,
+.hljs-quote {
+  color: #7f7e88;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-doctag,
+.hljs-section {
+  color: #ff9fcf;
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute,
+.hljs-meta .hljs-string {
+  color: #cdf26a;
+}
+.hljs-number,
+.hljs-literal,
+.hljs-symbol,
+.hljs-bullet {
+  color: #ffc072;
+}
+.hljs-title,
+.hljs-title.function_,
+.hljs-title.class_,
+.hljs-name {
+  color: #9edcff;
+}
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-property,
+.hljs-params {
+  color: #cfbaff;
+}
+.hljs-built_in,
+.hljs-type,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: #8eefcb;
+}
+.hljs-meta,
+.hljs-tag,
+.hljs-punctuation {
+  color: #a3a2ab;
+}
+.hljs-deletion {
+  color: #ffb1a8;
+  background: rgb(255 90 79 / 0.12);
+}
+.hljs-addition {
+  background: rgb(205 242 106 / 0.1);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
+}

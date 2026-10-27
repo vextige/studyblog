@@ -1,0 +1,27 @@
+---
+import PostRow from './PostRow.astro';
+import { groupByMonth } from '../lib/format';
+import type { PostCard } from '../lib/posts';
+
+interface Props {
+  posts: PostCard[];
+  /** '2026년 10월'처럼 달마다 나눠서 보여 줄까요? */
+  byMonth?: boolean;
+}
+
+const { posts, byMonth = false } = Astro.props;
+const groups = byMonth ? groupByMonth(posts) : [{ key: 'all', label: '', items: posts }];
+---
+
+{
+  groups.map((group) => (
+    <section aria-label={group.label || undefined}>
+      {group.label && <h2 class="month-label">{group.label}</h2>}
+      <ol class="post-list">
+        {group.items.map((post) => (
+          <PostRow post={post} />
+        ))}
+      </ol>
+    </section>
+  ))
+}

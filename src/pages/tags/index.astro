@@ -1,0 +1,39 @@
+---
+// 태그 모음: 형광펜 색깔별 카드
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { listTags } from '../../lib/tags';
+
+const tags = (await listTags()).filter((t) => t.count > 0);
+const total = tags.reduce((sum, t) => sum + t.count, 0);
+---
+
+<BaseLayout title="태그" description="주제별로 모아 보는 공부 기록">
+  <div class="wrap">
+    <header class="page-head">
+      <span class="label">Tags · 형광펜 색인</span>
+      <h1>주제별로 보기</h1>
+      <p class="lead">같은 색 형광펜으로 칠해 둔 기록끼리 모았어요. 태그 {tags.length}개, 붙인 횟수 {total}번.</p>
+    </header>
+
+    {
+      tags.length > 0 ? (
+        <div class="tag-board">
+          {tags.map((tag) => (
+            <a class="tag-card sheet" href={`/tags/${encodeURIComponent(tag.slug)}`}>
+              <span class="tag" data-color={tag.color}>
+                {tag.name}
+              </span>
+              {tag.description && <p>{tag.description}</p>}
+              <span class="mono">기록 {tag.count}개 →</span>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <div class="empty">
+          <p class="hand">아직 태그가 없어요</p>
+          <p>글을 쓸 때 태그를 붙이면 여기에 모여요.</p>
+        </div>
+      )
+    }
+  </div>
+</BaseLayout>

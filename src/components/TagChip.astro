@@ -1,0 +1,18 @@
+---
+import type { TagRef } from '../lib/posts';
+
+interface Props {
+  tag: Pick<TagRef, 'slug' | 'name' | 'color'>;
+  size?: 'md' | 'lg';
+  count?: number;
+  link?: boolean;
+}
+
+const { tag, size = 'md', count, link = true } = Astro.props;
+const Tag = link ? 'a' : 'span';
+---
+
+<Tag class:list={['tag', { 'tag-lg': size === 'lg' }]} data-color={tag.color} href={link ? `/tags/${encodeURIComponent(tag.slug)}` : undefined}>
+  {tag.name}
+  {count !== undefined && <span class="tag-count">{count}</span>}
+</Tag>

@@ -1,0 +1,109 @@
+---
+// 첫 화면 오른쪽 카드: 오늘이 며칠째인지, 오늘 도장을 찍었는지, 연속 기록
+import BigStamp from './BigStamp.astro';
+import Icon from './Icon.astro';
+import type { ChallengeState } from '../lib/challenge';
+import { compactNumber, dayLabel } from '../lib/format';
+import { PenLine } from '../lib/icons';
+import { formatDate } from '../lib/time';
+
+interface Props {
+  challenge: ChallengeState | null;
+  postCount: number;
+  totalViews: number;
+  reactionCount: number;
+  /** 지금까지 공부한 시간(분) */
+  studyMinutes?: number;
+}
+
+const { challenge, postCount, totalViews, reactionCount, studyMinutes = 0 } = Astro.props;
+const studyHours = Math.round(studyMinutes / 6) / 10;
+const isAdmin = Boolean(Astro.locals.user);
+const today = formatDate(Date.now());
+const streak = challenge?.streak;
+const writtenToday = streak?.writtenToday ?? false;
+
+// 카드 가운데 큰 글씨: "오늘은 DAY 025" / 챌린지 전 / 완주 후 / 챌린지를 끈 경우
+let lead = '오늘은';
+let big: string;
+let note = writtenToday ? '오늘도 도장 쾅!' : '오늘 칸은 아직 비어 있어요';
+if (!challenge) {
+  lead = '쌓인 기록';
+  big = `${postCount}개`;
+  note = '차곡차곡 쌓는 중';
+} else if (challenge.dPlus === 0) {
+  lead = '챌린지';
+  big = '시작 전';
+  note = '곧 첫 칸을 채워요!';
+} else if (challenge.dPlus > challenge.totalDays) {
+  big = `D+${challenge.dPlus}`;
+  if (!writtenToday) note = `${challenge.totalDays}일 완주! 계속 가 보자`;
+} else {
+  big = `DAY ${dayLabel(challenge.dPlus)}`;
+}
+const stampDay = challenge && challenge.dPlus >= 1 && challenge.dPlus <= challenge.totalDays ? challenge.dPlus : null;
+---
+
+<aside class="today-card sheet" aria-label="오늘의 칸">
+  <span class="tape" aria-hidden="true"></span>
+  <span class="label">Today · {today}</span>
+  <div class="today-main">
+    {
+      writtenToday ? (
+        <div class="today-stamp">
+          <BigStamp id="today-stamp" day={stampDay} />
+        </div>
+      ) : (
+        <div class="today-stamp is-empty" aria-hidden="true">
+          오늘의
+          <br />
+          빈칸
+        </div>
+      )
+    }
+    <div>
+      <p class="today-day">
+        {lead}
+        <b>{big}</b>
+      </p>
+      <p class="hand">{note}</p>
+    </div>
+  </div>
+  <dl class="today-stats">
+    <div>
+      <dt>연속</dt>
+      <dd>{streak?.current ?? 0}<small>일</small></dd>
+    </div>
+    <div>
+      <dt>최고</dt>
+      <dd>{streak?.best ?? 0}<small>일</small></dd>
+    </div>
+    <div>
+      <dt>기록</dt>
+      <dd>{compactNumber(postCount)}<small>개</small></dd>
+    </div>
+    {
+      studyMinutes > 0 ? (
+        <div>
+          <dt>공부</dt>
+          <dd>
+            {studyHours}
+            <small>시간</small>
+          </dd>
+        </div>
+      ) : (
+        <div>
+          <dt>{reactionCount > 0 ? '스티커' : '조회'}</dt>
+          <dd>{compactNumber(reactionCount > 0 ? reactionCount : totalViews)}</dd>
+        </div>
+      )
+    }
+  </dl>
+  {
+    isAdmin && !writtenToday && (
+      <a class="btn btn-primary" href="/admin/posts/new" data-astro-prefetch="false">
+        <Icon icon={PenLine} /> 오늘 기록 쓰기
+      </a>
+    )
+  }
+</aside>

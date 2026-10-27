@@ -1,0 +1,155 @@
+---
+/**
+ * 관리자 화면의 공통 틀: 왼쪽 서랍(메뉴) + 본문
+ * bare=true 이면 메뉴 없이 가운데 카드만 (로그인·처음 설정 화면)
+ */
+import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+import '@fontsource-variable/jetbrains-mono';
+import '@fontsource/nanum-pen-script';
+import '../styles/base.css';
+import '../styles/prose.css';
+import '../styles/admin.css';
+
+import BrandMark from '../components/BrandMark.astro';
+import Icon from '../components/Icon.astro';
+import SvgSprites from '../components/SvgSprites.astro';
+import type { Flash } from '../lib/admin-forms';
+import { pendingCommentCount } from '../lib/comments';
+import {
+  CircleAlert,
+  CircleCheck,
+  ExternalLink,
+  FileText,
+  Files,
+  Image,
+  LayoutDashboard,
+  ListTodo,
+  LogOut,
+  MessageSquare,
+  Moon,
+  PenLine,
+  Settings,
+  Shield,
+  Tags,
+} from '../lib/icons';
+import { getSiteChrome } from '../lib/site';
+
+interface Props {
+  title: string;
+  kicker?: string;
+  flash?: Flash | null;
+  bare?: boolean;
+}
+
+const { title, kicker = 'Admin', flash = null, bare = false } = Astro.props;
+const { settings } = await getSiteChrome(Astro.locals);
+const pending = !bare && Astro.locals.user ? await pendingCommentCount() : 0;
+const path = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const isCurrent = (href: string) => (href === '/admin' ? path === '/admin' : path === href || path.startsWith(`${href}/`));
+
+const nav = [
+  { href: '/admin', label: '대시보드', icon: LayoutDashboard },
+  { href: '/admin/posts', label: '기록', icon: FileText },
+  { href: '/admin/goals', label: '목표·계획', icon: ListTodo },
+  { href: '/admin/comments', label: '댓글', icon: MessageSquare, badge: pending },
+  { href: '/admin/tags', label: '태그', icon: Tags },
+  { href: '/admin/pages', label: '페이지', icon: Files },
+  { href: '/admin/media', label: '이미지', icon: Image },
+];
+const nav2 = [
+  { href: '/admin/settings', label: '블로그 설정', icon: Settings },
+  { href: '/admin/security', label: '로그인·보안', icon: Shield },
+];
+---
+
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex, nofollow" />
+    <script is:inline set:html={__THEME_INIT__} />
+    <title>{title} · 관리 · {settings.siteTitle}</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="admin">
+    <SvgSprites />
+    {
+      bare ? (
+        <main class="auth-wrap" id="main">
+          <slot />
+        </main>
+      ) : (
+        <div class="admin-shell">
+          <aside class="admin-side" aria-label="관리 메뉴">
+            <a class="brand" href="/admin">
+              <BrandMark />
+              <span class="brand-text">
+                {settings.siteTitle}
+                <small>글쓴이 책상</small>
+              </span>
+            </a>
+            <a class="btn btn-primary admin-write" href="/admin/posts/new">
+              <Icon icon={PenLine} />
+              <span class="label-text">새 기록 쓰기</span>
+            </a>
+            <nav class="admin-nav">
+              {nav.map((item) => (
+                <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
+                  <Icon icon={item.icon} />
+                  {item.label}
+                  {item.badge ? <span class="badge">{item.badge}</span> : null}
+                </a>
+              ))}
+              <span class="label admin-nav-label">Settings</span>
+              {nav2.map((item) => (
+                <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
+                  <Icon icon={item.icon} />
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+            <div class="admin-side-foot">
+              <a href="/" target="_blank" rel="noopener">
+                <Icon icon={ExternalLink} />
+                <span>블로그 보기</span>
+              </a>
+              <button type="button" data-theme-toggle aria-label="밝은 화면/어두운 화면 바꾸기">
+                <Icon icon={Moon} />
+                <span>화면 밝기</span>
+              </button>
+              <form method="post" action="/api/auth/logout">
+                <button type="submit">
+                  <Icon icon={LogOut} />
+                  <span>로그아웃</span>
+                </button>
+              </form>
+            </div>
+          </aside>
+          <main class="admin-main" id="main">
+            <header class="admin-head">
+              <div>
+                <span class="label">{kicker}</span>
+                <h1>{title}</h1>
+              </div>
+              <div class="admin-head-actions">
+                <slot name="actions" />
+              </div>
+            </header>
+            {flash && (
+              <p class:list={['notice', flash.tone === 'ok' ? 'notice-ok' : 'notice-error']} role="status">
+                <Icon icon={flash.tone === 'ok' ? CircleCheck : CircleAlert} />
+                {flash.message}
+              </p>
+            )}
+            <slot />
+          </main>
+        </div>
+      )
+    }
+    <script>
+      import '../scripts/site';
+      import '../scripts/admin';
+    </script>
+  </body>
+</html>

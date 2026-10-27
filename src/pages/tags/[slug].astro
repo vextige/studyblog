@@ -1,0 +1,50 @@
+---
+// 한 태그의 기록 목록
+import Pagination from '../../components/Pagination.astro';
+import PostList from '../../components/PostList.astro';
+import TagFilterBar from '../../components/TagFilterBar.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { listPublishedPosts } from '../../lib/posts';
+import { listTags } from '../../lib/tags';
+
+const slug = Astro.params.slug ?? '';
+const tags = await listTags();
+const tag = tags.find((t) => t.slug === slug);
+if (!tag) return new Response(null, { status: 404, statusText: 'Not Found' });
+
+const page = Math.max(1, Math.floor(Number(Astro.url.searchParams.get('page')) || 1));
+const [list, all] = await Promise.all([
+  listPublishedPosts({ page, perPage: 15, tagId: tag.id }),
+  listPublishedPosts({ page: 1, perPage: 1 }),
+]);
+const path = `/tags/${encodeURIComponent(tag.slug)}`;
+---
+
+<BaseLayout
+  title={`#${tag.name}`}
+  description={tag.description || `#${tag.name} 태그가 붙은 공부 기록`}
+  canonicalPath={page > 1 ? `${path}?page=${page}` : path}
+>
+  <div class="wrap">
+    <header class="page-head">
+      <span class="label">Tag · 기록 {list.total}개</span>
+      <h1><span class="hl" data-color={tag.color}>#{tag.name}</span></h1>
+      {tag.description && <p class="lead">{tag.description}</p>}
+    </header>
+
+    <TagFilterBar tags={tags} current={tag.slug} total={all.total} />
+
+    {
+      list.posts.length > 0 ? (
+        <>
+          <PostList posts={list.posts} byMonth />
+          <Pagination page={list.page} pages={list.pages} url={Astro.url} />
+        </>
+      ) : (
+        <div class="empty">
+          <p class="hand">이 태그엔 아직 기록이 없어요</p>
+        </div>
+      )
+    }
+  </div>
+</BaseLayout>

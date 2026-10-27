@@ -1,0 +1,11 @@
+# 내 컴퓨터에서 개발할 때만 쓰는 비밀 값이에요.
+# `npm run setup:local`을 실행하면 이 파일을 복사해서 .dev.vars를 만들고, 무작위 값을 채워 줘요.
+
+# 관리자 패스키를 처음 등록할 때 입력하는 설정 토큰
+ADMIN_SETUP_TOKEN=change-me
+
+# 방문자 IP를 그대로 저장하지 않고 암호화 해시로 바꿀 때 쓰는 비밀 키
+HASH_SECRET=change-me
+
+# 개발 서버 주소
+SITE_URL=http://localhost:4321

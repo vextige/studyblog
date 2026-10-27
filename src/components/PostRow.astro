@@ -1,0 +1,48 @@
+---
+// 공부 장부의 한 줄: 왼쪽 Day 번호 · 가운데 제목과 요약 · 오른쪽 날짜
+import Icon from './Icon.astro';
+import TagChip from './TagChip.astro';
+import { compactNumber, dayLabel } from '../lib/format';
+import { Clock, Eye } from '../lib/icons';
+import type { PostCard } from '../lib/posts';
+import { formatDate } from '../lib/time';
+
+interface Props {
+  post: PostCard;
+  /** 검색 결과에서 요약 대신 보여 줄 본문 일부 */
+  snippet?: string;
+}
+
+const { post, snippet } = Astro.props;
+const href = `/posts/${encodeURIComponent(post.slug)}`;
+---
+
+<li class="post-row">
+  <div class="day" aria-hidden={post.dayNumber ? undefined : 'true'}>
+    <small>DAY</small>
+    {post.dayNumber ? dayLabel(post.dayNumber) : '—'}
+  </div>
+  <div>
+    <h3>
+      <a href={href} style={`view-transition-name: post-${post.id}`}>{post.title}</a>
+    </h3>
+    {snippet ? <p class="excerpt">{snippet}</p> : post.excerpt && <p class="excerpt">{post.excerpt}</p>}
+    <div class="post-meta">
+      <span><Icon icon={Clock} /> {post.readingMinutes}분</span>
+      <span><Icon icon={Eye} /> {compactNumber(post.viewCount)}</span>
+    </div>
+    {
+      post.tags.length > 0 && (
+        <div class="tags">
+          {post.tags.map((tag) => (
+            <TagChip tag={tag} />
+          ))}
+        </div>
+      )
+    }
+  </div>
+  <div class="side-col">
+    <time class="date" datetime={post.publishedAt.toISOString()}>{formatDate(post.publishedAt)}</time>
+    {post.coverUrl && <img class="thumb" src={post.coverUrl} alt="" loading="lazy" decoding="async" />}
+  </div>
+</li>

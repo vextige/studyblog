@@ -1,0 +1,32 @@
+---
+// 새 기록 쓰기
+import PostEditor, { type EditorPostData } from '../../../components/admin/PostEditor';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { nextDayNumber } from '../../../lib/posts';
+import { listTags } from '../../../lib/tags';
+
+const [day, tags] = await Promise.all([nextDayNumber(), listTags({ publicOnly: false })]);
+const initial: EditorPostData = {
+  id: null,
+  title: '',
+  slug: '',
+  contentMd: '',
+  excerpt: '',
+  tagNames: [],
+  dayNumber: day,
+  studyMinutes: 60,
+  status: 'draft',
+  publishedAt: null,
+  coverMediaId: null,
+  coverUrl: null,
+  ogMediaId: null,
+  ogUrl: null,
+  featured: false,
+  allowComments: true,
+  updatedAt: null,
+};
+---
+
+<AdminLayout title="새 기록" kicker={`Write · DAY ${String(day).padStart(3, '0')}`}>
+  <PostEditor client:only="preact" initial={initial} tags={tags.map((t) => ({ name: t.name, color: t.color }))} />
+</AdminLayout>

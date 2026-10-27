@@ -1,0 +1,56 @@
+---
+// 고정 페이지 목록 (소개 등)
+import { actions } from 'astro:actions';
+import Icon from '../../../components/Icon.astro';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { formAction, handleFormActions } from '../../../lib/admin-forms';
+import { ExternalLink, Pencil, Plus, Trash } from '../../../lib/icons';
+import { listAllPages } from '../../../lib/pages';
+import { relativeTime } from '../../../lib/time';
+
+const handled = handleFormActions(Astro, [[actions.admin.deletePage, '페이지를 지웠어요.']]);
+if (handled instanceof Response) return handled;
+const pages = await listAllPages();
+---
+
+<AdminLayout title="페이지" kicker="Pages" flash={handled}>
+  <a slot="actions" class="btn btn-primary" href="/admin/pages/new"><Icon icon={Plus} /> 새 페이지</a>
+  <p class="muted small" style="margin-bottom: 16px">소개, 공부 로드맵, 개인정보 처리방침처럼 글 목록에 섞이지 않는 페이지예요.</p>
+  <section class="panel sheet">
+    {
+      pages.length === 0 ? (
+        <p class="muted">아직 페이지가 없어요.</p>
+      ) : (
+        <ul class="admin-list">
+          {pages.map((p) => (
+            <li class="admin-row">
+              <div>
+                <div class="admin-row-title">
+                  <span class="pill" data-tone={p.published ? 'published' : 'draft'}>{p.published ? '공개' : '비공개'}</span>
+                  <a href={`/admin/pages/${p.id}`}>{p.title}</a>
+                  {p.showInNav && <span class="pill">메뉴</span>}
+                </div>
+                <div class="admin-row-meta">
+                  <span>/{p.slug}</span>
+                  <span>{relativeTime(p.updatedAt)} 수정</span>
+                </div>
+              </div>
+              <div class="row-actions">
+                {p.published && (
+                  <a class="btn btn-sm btn-ghost" href={`/${p.slug}`} target="_blank" rel="noopener"><Icon icon={ExternalLink} /> 보기</a>
+                )}
+                <a class="btn btn-sm" href={`/admin/pages/${p.id}`}><Icon icon={Pencil} /> 고치기</a>
+                <form method="post" action={formAction(Astro.url, actions.admin.deletePage)}>
+                  <input type="hidden" name="id" value={p.id} />
+                  <button class="btn btn-sm btn-danger" type="submit" data-confirm={`"${p.title}" 페이지를 지울까요? 되돌릴 수 없어요.`}>
+                    <Icon icon={Trash} /> 지우기
+                  </button>
+                </form>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+</AdminLayout>

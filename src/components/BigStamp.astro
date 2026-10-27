@@ -1,0 +1,70 @@
+---
+// 큰 '참 잘했어요' 도장. 가운데에 Day 번호, 아래에 날짜가 들어가요.
+interface Props {
+  day?: number | null;
+  date?: string;
+  id: string;
+  class?: string;
+}
+
+const { day = null, date = '', id, class: className } = Astro.props;
+const top = `${id}-top`;
+const bottom = `${id}-bottom`;
+---
+
+<svg class:list={['stamp-svg', className]} viewBox="0 0 220 220" role="img" aria-label="참 잘했어요 도장">
+  <defs>
+    <path id={top} d="M48 110 A62 62 0 0 1 172 110"></path>
+    <path id={bottom} d="M32 110 A78 78 0 0 0 188 110"></path>
+  </defs>
+  <g filter="url(#ink-rough)" fill="currentColor">
+    <circle cx="110" cy="110" r="100" fill="none" stroke="currentColor" stroke-width="7"></circle>
+    <circle cx="110" cy="110" r="88" fill="none" stroke="currentColor" stroke-width="2.4"></circle>
+    <text font-size="25" font-weight="800" letter-spacing="4" style="font-family:'Pretendard Variable',sans-serif">
+      <textPath href={`#${top}`} startOffset="50%" text-anchor="middle">참 잘했어요</textPath>
+    </text>
+    {
+      date && (
+        <text font-size="14" font-weight="600" letter-spacing="2" style="font-family:'JetBrains Mono Variable',monospace">
+          <textPath href={`#${bottom}`} startOffset="50%" text-anchor="middle">
+            {date}
+          </textPath>
+        </text>
+      )
+    }
+    {
+      day ? (
+        <>
+          <text
+            x="110"
+            y="94"
+            text-anchor="middle"
+            font-size="13"
+            font-weight="600"
+            letter-spacing="5"
+            style="font-family:'JetBrains Mono Variable',monospace"
+          >
+            DAY
+          </text>
+          <text
+            x="110"
+            y="138"
+            text-anchor="middle"
+            font-size="44"
+            font-weight="800"
+            letter-spacing="-1"
+            style="font-family:'Pretendard Variable',sans-serif"
+          >
+            {String(day).padStart(3, '0')}
+          </text>
+        </>
+      ) : (
+        <>
+          <circle cx="94" cy="104" r="6" />
+          <circle cx="126" cy="104" r="6" />
+          <path d="M88 122 Q110 142 132 122" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" />
+        </>
+      )
+    }
+  </g>
+</svg>

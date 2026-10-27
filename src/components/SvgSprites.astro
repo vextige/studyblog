@@ -1,0 +1,26 @@
+---
+// 화면 여러 곳에서 다시 쓰는 그림 조각: 잉크 번짐 효과, '참 잘했어요' 작은 도장
+---
+
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+  <defs>
+    <!-- 도장 잉크가 종이에 찍힌 것처럼 가장자리를 거칠게, 군데군데 잉크가 덜 묻게 -->
+    <filter id="ink-rough" x="-15%" y="-15%" width="130%" height="130%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="4" result="grain"></feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="grain" scale="3" xChannelSelector="R" yChannelSelector="G" result="rough"
+      ></feDisplacementMap>
+      <feTurbulence type="fractalNoise" baseFrequency="0.32" numOctaves="1" seed="11" result="blotch"></feTurbulence>
+      <feColorMatrix in="blotch" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  3.2 0 0 0 -0.62" result="mask"
+      ></feColorMatrix>
+      <feComposite in="rough" in2="mask" operator="in"></feComposite>
+    </filter>
+    <symbol id="stamp-mini" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="7"></circle>
+      <circle cx="50" cy="50" r="32" fill="none" stroke="currentColor" stroke-width="2.6"></circle>
+      <circle cx="40" cy="45" r="4.6" fill="currentColor"></circle>
+      <circle cx="60" cy="45" r="4.6" fill="currentColor"></circle>
+      <path d="M36 56.5 Q50 70 64 56.5" fill="none" stroke="currentColor" stroke-width="5.2" stroke-linecap="round"
+      ></path>
+    </symbol>
+  </defs>
+</svg>

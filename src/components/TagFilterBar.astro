@@ -1,0 +1,35 @@
+---
+// 글 목록 위의 태그 필터: [전체] [#기록 12] [#개념 5] …
+import type { TagWithCount } from '../lib/tags';
+
+interface Props {
+  tags: TagWithCount[];
+  /** 지금 보고 있는 태그 (전체면 없음) */
+  current?: string;
+  total: number;
+}
+
+const { tags, current, total } = Astro.props;
+const used = tags.filter((t) => t.count > 0);
+---
+
+{
+  used.length > 0 && (
+    <nav class="filter-bar" aria-label="태그로 거르기">
+      <a class="chip-link" href="/posts" aria-current={current ? undefined : 'page'}>
+        전체 <small>{total}</small>
+      </a>
+      {used.map((tag) => (
+        <a
+          class="chip-link"
+          data-color={tag.color}
+          href={`/tags/${encodeURIComponent(tag.slug)}`}
+          aria-current={current === tag.slug ? 'page' : undefined}
+        >
+          <span class="swatch" aria-hidden="true" />
+          {tag.name} <small>{tag.count}</small>
+        </a>
+      ))}
+    </nav>
+  )
+}

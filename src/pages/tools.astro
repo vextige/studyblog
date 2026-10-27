@@ -1,0 +1,245 @@
+---
+// 공부 도구: 공부 타이머(뽀모도로) + 학점 계산기. 둘 다 내 브라우저 안에서만 동작해요. (서버에 저장 안 함)
+import Icon from '../components/Icon.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Plus, RotateCcw } from '../lib/icons';
+---
+
+<BaseLayout title="공부 도구" description="공부 타이머(뽀모도로)와 학점 계산기">
+  <div class="wrap">
+    <header class="page-head">
+      <span class="label">Tools · 책상 위 도구</span>
+      <h1>집중은 <mark data-color="sky">타이머</mark>에게,<br />계산은 계산기에게</h1>
+      <p class="lead">둘 다 이 브라우저 안에서만 동작해요. 기록은 내 기기에만 남아요.</p>
+    </header>
+
+    <div class="tools-grid">
+      <section class="sheet tool timer" aria-labelledby="timer-title" data-timer>
+        <span class="tape" aria-hidden="true"></span>
+        <div class="tool-head">
+          <h2 id="timer-title">공부 타이머</h2>
+          <div class="seg" role="group" aria-label="타이머 길이">
+            <button type="button" data-preset="25,5" aria-pressed="true">25 / 5</button>
+            <button type="button" data-preset="50,10" aria-pressed="false">50 / 10</button>
+            <button type="button" data-preset="90,15" aria-pressed="false">90 / 15</button>
+          </div>
+        </div>
+        <p class="timer-phase" data-phase>집중 시간</p>
+        <p class="timer-clock mono" data-clock aria-live="off">25:00</p>
+        <div class="timer-track" aria-hidden="true"><span data-progress></span></div>
+        <div class="timer-actions">
+          <button class="btn btn-primary" type="button" data-start>시작</button>
+          <button class="btn btn-ghost" type="button" data-reset><Icon icon={RotateCcw} /> 처음부터</button>
+        </div>
+        <div class="timer-today">
+          <span class="label">오늘 채운 집중</span>
+          <div class="timer-stamps" data-stamps aria-live="polite"></div>
+          <span class="mono small" data-total>0분</span>
+        </div>
+        <p class="hint">집중이 끝나면 '띵' 소리가 나요. 다 끝나면 오늘 공부 시간을 글에 적어 보세요.</p>
+      </section>
+
+      <section class="sheet tool gpa" aria-labelledby="gpa-title" data-gpa>
+        <div class="tool-head">
+          <h2 id="gpa-title">학점 계산기</h2>
+          <label class="scale">
+            <span class="sr-only">만점 기준</span>
+            <select class="select" id="gpa-scale" data-scale>
+              <option value="4.5">4.5 만점</option>
+              <option value="4.3">4.3 만점</option>
+            </select>
+          </label>
+        </div>
+        <div class="gpa-rows" data-rows></div>
+        <button class="btn btn-sm" type="button" data-add><Icon icon={Plus} /> 과목 추가</button>
+        <div class="gpa-result">
+          <div>
+            <span class="label">평점</span>
+            <b class="mono" data-gpa-value>0.00</b>
+          </div>
+          <div>
+            <span class="label">이수 학점</span>
+            <b class="mono" data-credits>0</b>
+          </div>
+          <div>
+            <span class="label">전공 평점</span>
+            <b class="mono" data-major>-</b>
+          </div>
+        </div>
+        <p class="hint">P/F 과목은 학점에만 더하고 평점에는 넣지 않아요.</p>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    import '../scripts/tools';
+  </script>
+</BaseLayout>
+
+<style>
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+    gap: 22px;
+    align-items: start;
+  }
+  .tool {
+    position: relative;
+    display: grid;
+    gap: 16px;
+    padding: 30px 28px 26px;
+  }
+  .tool .tape {
+    top: -13px;
+    left: 30px;
+    transform: rotate(-3deg);
+  }
+  .tool-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .tool-head h2 {
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+  }
+  .seg {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 10px;
+    background: var(--paper-2);
+  }
+  .seg button {
+    height: 30px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    font: 600 12.5px/1 var(--font-mono);
+    color: var(--ink-3);
+  }
+  .seg button[aria-pressed='true'] {
+    background: var(--sheet);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+  }
+  .timer-phase {
+    font-family: var(--font-hand);
+    font-size: 30px;
+    line-height: 1;
+    color: var(--pen);
+  }
+  .timer[data-mode='break'] .timer-phase {
+    color: var(--stamp);
+  }
+  .timer-clock {
+    font-size: clamp(64px, 12vw, 104px);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.06em;
+  }
+  .timer-track {
+    height: 14px;
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px 8px 4px 9px / 8px 4px 8px 3px;
+    overflow: hidden;
+  }
+  .timer-track span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--hl-lime);
+    transition: width 0.4s linear;
+  }
+  .timer[data-mode='break'] .timer-track span {
+    background: var(--hl-pink);
+  }
+  .timer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .timer-today {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--rule-strong);
+  }
+  .timer-stamps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .timer-stamps svg {
+    width: 26px;
+    height: 26px;
+    color: var(--stamp);
+  }
+  .hint {
+    font-size: 13.5px;
+    color: var(--ink-3);
+  }
+  .scale .select {
+    min-height: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+  .gpa-rows {
+    display: grid;
+    gap: 8px;
+  }
+  .gpa-rows :global(.gpa-row) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 74px 84px auto auto;
+    align-items: center;
+    gap: 6px;
+  }
+  .gpa-rows :global(.input),
+  .gpa-rows :global(.select) {
+    min-height: 40px;
+    height: 40px;
+    font-size: 14.5px;
+    padding: 0 10px;
+  }
+  .gpa-rows :global(.select) {
+    padding-right: 28px;
+    background-position:
+      calc(100% - 15px) 50%,
+      calc(100% - 10px) 50%;
+  }
+  .gpa-rows :global(label.major) {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+  .gpa-result {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--sheet-2);
+    border: 1px solid var(--rule);
+  }
+  .gpa-result > div {
+    display: grid;
+    gap: 6px;
+  }
+  .gpa-result b {
+    font-size: 26px;
+    letter-spacing: -0.04em;
+  }
+  @media (max-width: 520px) {
+    .gpa-rows :global(.gpa-row) {
+      grid-template-columns: minmax(0, 1fr) 64px 76px;
+    }
+  }
+</style>

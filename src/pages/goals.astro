@@ -1,0 +1,128 @@
+---
+// 목표 보드: 장기 목표 → 이번 달 → 이번 주. 큰 목표를 잘게 쪼개서 오늘 할 일까지 내려와요.
+import GoalCard from '../components/GoalCard.astro';
+import Icon from '../components/Icon.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { computeChallenge } from '../lib/challenge';
+import { GOAL_TERM_LABELS, groupGoals, listGoals } from '../lib/goals';
+import { formatStudyTime } from '../lib/format';
+import { ArrowRight, Plus } from '../lib/icons';
+import { getHomeData } from '../lib/posts';
+import { getSiteChrome } from '../lib/site';
+import { GOAL_TERMS } from '../db/schema';
+
+const [{ settings }, goals, home] = await Promise.all([getSiteChrome(Astro.locals), listGoals(), getHomeData()]);
+const byTerm = groupGoals(goals);
+const active = goals.filter((g) => g.status === 'active');
+const done = goals.filter((g) => g.status === 'done').length;
+const avg = active.length ? Math.round(active.reduce((sum, g) => sum + g.percent, 0) / active.length) : 0;
+const challenge = settings.challenge.enabled
+  ? computeChallenge(settings.challenge, home.challengeDays, home.publishedDates)
+  : null;
+const isAdmin = Boolean(Astro.locals.user);
+---
+
+<BaseLayout title="목표와 계획" description={`${settings.authorName}의 목표와 공부 계획`}>
+  <div class="wrap">
+    <header class="page-head">
+      <span class="label">Goals &amp; Plans · 목표 보드</span>
+      <h1>크게 꿈꾸고, <mark>잘게</mark> 쪼개기</h1>
+      <p class="lead">장기 목표를 이번 달 목표로, 이번 달 목표를 이번 주 할 일로 쪼개 두었어요. 한 칸씩 지워 나가는 중이에요.</p>
+    </header>
+
+    <div class="goal-summary">
+      <div class="goal-stat sheet">
+        <span class="label">진행 중</span>
+        <b>{active.length}</b>
+      </div>
+      <div class="goal-stat sheet">
+        <span class="label">달성</span>
+        <b class="is-stamp">{done}</b>
+      </div>
+      <div class="goal-stat sheet">
+        <span class="label">평균 진행률</span>
+        <b>{avg}%</b>
+      </div>
+      {
+        challenge && (
+          <a class="goal-stat sheet is-link" href="/#board">
+            <span class="label">{settings.challenge.title}</span>
+            <b>
+              {challenge.stamped}
+              <small>/ {challenge.totalDays}칸</small>
+            </b>
+          </a>
+        )
+      }
+      {
+        home.studyMinutes > 0 && (
+          <div class="goal-stat sheet">
+            <span class="label">누적 공부 시간</span>
+            <b>{formatStudyTime(home.studyMinutes)}</b>
+          </div>
+        )
+      }
+      <a class="goal-stat sheet is-link" href="/tools">
+        <span class="label">집중하러 가기</span>
+        <b>⏱ 타이머</b>
+      </a>
+      {
+        isAdmin && (
+          <a class="btn btn-primary goal-add" href="/admin/goals" data-astro-prefetch="false">
+            <Icon icon={Plus} /> 목표 관리
+          </a>
+        )
+      }
+    </div>
+
+    <div class="goal-board">
+      {
+        GOAL_TERMS.map((term) => (
+          <section class="goal-col" aria-labelledby={`goal-${term}`}>
+            <header class="goal-col-head">
+              <h2 id={`goal-${term}`}>{GOAL_TERM_LABELS[term].title}</h2>
+              <small>{GOAL_TERM_LABELS[term].hint}</small>
+            </header>
+            {byTerm[term].length > 0 ? (
+              byTerm[term].map((goal) => <GoalCard goal={goal} editable={isAdmin} />)
+            ) : (
+              <p class="goal-empty">
+                {isAdmin ? (
+                  <a class="more-link" href="/admin/goals" data-astro-prefetch="false">
+                    첫 목표 붙이기 <Icon icon={ArrowRight} />
+                  </a>
+                ) : (
+                  '아직 비어 있어요'
+                )}
+              </p>
+            )}
+          </section>
+        ))
+      }
+    </div>
+
+    {
+      settings.nowStudying.length > 0 && (
+        <section class="section">
+          <header class="section-head">
+            <div>
+              <span class="label">Now</span>
+              <h2>지금 공부 중</h2>
+            </div>
+          </header>
+          <div class="tags">
+            {settings.nowStudying.map((item, i) => (
+              <span class="tag tag-lg" data-color={['lime', 'sky', 'pink', 'orange', 'violet', 'mint'][i % 6]}>
+                {item}
+              </span>
+            ))}
+          </div>
+        </section>
+      )
+    }
+  </div>
+
+  <script>
+    import '../scripts/goals';
+  </script>
+</BaseLayout>

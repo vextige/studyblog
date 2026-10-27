@@ -1,0 +1,38 @@
+---
+// 처음 설정: 설정 토큰을 넣고 내 기기에 패스키를 등록해요. (토큰은 .dev.vars 또는 Cloudflare 비밀 값에 있어요)
+import Icon from '../../components/Icon.astro';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { ArrowLeft, KeyRound } from '../../lib/icons';
+
+// 이미 로그인했다면 보안 화면에서 패스키를 더 추가하면 돼요.
+if (Astro.locals.user) return Astro.redirect('/admin/security', 303);
+---
+
+<AdminLayout title="처음 설정" bare>
+  <section class="auth-card sheet">
+    <span class="tape" aria-hidden="true"></span>
+    <span class="label">Setup · 처음 한 번만</span>
+    <h1>내 블로그의<br />열쇠 만들기</h1>
+    <ol class="auth-steps">
+      <li>설정 토큰을 붙여 넣어요. (<code>npm run setup:local</code>이 알려 준 값, 배포한 사이트는 Cloudflare에 넣은 값)</li>
+      <li>"패스키 등록"을 누르고 지문·얼굴·PIN으로 확인해요.</li>
+      <li>끝! 다음부터는 버튼 한 번으로 로그인해요.</li>
+    </ol>
+    <form class="form-grid" data-setup data-done="/admin">
+      <label class="field">
+        <span>설정 토큰</span>
+        <input class="input" name="setupToken" type="password" required autocomplete="off" spellcheck="false" />
+      </label>
+      <label class="field">
+        <span>이 기기 이름 (선택)</span>
+        <input class="input" name="name" maxlength="40" placeholder="예) 내 노트북" />
+      </label>
+      <button class="btn btn-primary" type="submit"><Icon icon={KeyRound} /> 패스키 등록</button>
+    </form>
+    <p class="notice" data-auth-status role="status" hidden></p>
+    <a class="more-link" href="/admin/login"><Icon icon={ArrowLeft} /> 로그인 화면으로</a>
+  </section>
+  <script>
+    import '../../scripts/auth';
+  </script>
+</AdminLayout>
